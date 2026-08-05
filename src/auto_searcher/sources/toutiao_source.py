@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 from typing import Any
 
-from .base_source import HttpSource
+from .cached_source import CachedSource
 
 
-class ToutiaoSource(HttpSource):
+class ToutiaoSource(CachedSource):
     url = "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"
 
     @property

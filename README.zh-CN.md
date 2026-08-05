@@ -65,7 +65,7 @@ flowchart LR
 - `CdpSession` 通过通用 `Endpoint` 控制任意兼容浏览器。
 - `CdpInteraction` 通过 CDP 实现输入、点击和结果页浏览。
 - `TopicGather` 负责来源容错、聚合、随机排序、去重和保险话题切换。
-- `Source`、`HttpSource` 和 `CachedSource` 分离来源行为与缓存行为。
+- `CachedSource` 在 `Source` 接口之上统一提供 HTTP 获取和可选的每日缓存。
 - `schemas` 只保存配置与搜索数据结构。
 
 ## 🚀 快速开始
@@ -259,8 +259,9 @@ AutoSearcher/
 
 ### 扩展数据源
 
-JSON HTTP 接口可以继承 `HttpSource`，实现 `name`、`url` 和 `parse()`；随后
-从 `sources` 导出类、在命令行的数据源映射中注册、将名称加入
+JSON HTTP 接口可以继承 `CachedSource`，实现 `name`、`url` 和 `parse()`。
+传入缓存目录即可启用每日缓存，传入 `None` 则绕过缓存。随后从 `sources`
+导出类、在命令行的数据源映射中注册、将名称加入
 `sources.enabled`，并为解析器补充不访问网络的单元测试。非 HTTP 来源可以
 直接实现 `Source.fetch()`。
 

@@ -67,7 +67,7 @@ The main dependencies point inward toward small interfaces:
 - `CdpSession` controls any compatible browser through a generic `Endpoint`.
 - `CdpInteraction` implements typing, clicking, and result browsing through CDP.
 - `TopicGather` owns source fallback, aggregation, shuffling, and deduplication.
-- `Source`, `HttpSource`, and `CachedSource` separate provider behavior from cache behavior.
+- `CachedSource` adds HTTP retrieval and optional daily caching to the `Source` contract.
 - `schemas` contains configuration and search data structures only.
 
 ## 🚀 Quick Start
@@ -267,8 +267,9 @@ AutoSearcher/
 
 ### Add a source
 
-For a JSON HTTP API, subclass `HttpSource` and implement `name`, `url`, and
-`parse()`. Then export the class from `sources`, register it in the CLI source
+For a JSON HTTP API, subclass `CachedSource` and implement `name`, `url`, and
+`parse()`. Pass a cache directory to enable daily caching, or `None` to bypass
+it. Then export the class from `sources`, register it in the CLI source
 map, add its name to `sources.enabled`, and cover the parser with an offline unit
 test. Non-HTTP sources can implement `Source.fetch()` directly.
 

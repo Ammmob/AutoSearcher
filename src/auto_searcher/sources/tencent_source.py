@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 from typing import Any
 
-from .base_source import HttpSource
+from .cached_source import CachedSource
 
 
-class TencentSource(HttpSource):
+class TencentSource(CachedSource):
     url = "https://r.inews.qq.com/gw/event/hot_ranking_list?page_size=50"
 
     @property

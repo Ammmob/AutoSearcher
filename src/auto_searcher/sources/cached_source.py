@@ -1,11 +1,15 @@
-"""Daily on-disk cache wrapper for topic sources."""
+"""HTTP topic source with optional daily caching."""
 
 import json
 import logging
 import os
+from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from datetime import date
 from pathlib import Path
+from typing import Any
+
+import requests
 
 from auto_searcher.schemas import Topic
 
@@ -15,25 +19,27 @@ logger = logging.getLogger(__name__)
 
 
 class CachedSource(Source):
-    """Adds an independent daily cache to another source."""
+    """Template-method base class for cached JSON topic APIs."""
+
+    url: str
 
     def __init__(
         self,
-        source: Source,
-        cache_dir: str | Path,
+        timeout_seconds: float = 10,
+        cache_dir: str | Path | None = None,
+        session: requests.Session | None = None,
         today: Callable[[], date] = date.today,
     ) -> None:
-        self._source = source
+        self._timeout_seconds = timeout_seconds
+        self._session = session or requests.Session()
         safe_name = "".join(
             character if character.isalnum() or character in "-_" else "_"
-            for character in source.name
+            for character in self.name
         )
-        self._cache_file = Path(cache_dir) / f"{safe_name}.json"
+        self._cache_file = (
+            Path(cache_dir) / f"{safe_name}.json" if cache_dir is not None else None
+        )
         self._today = today
-
-    @property
-    def name(self) -> str:
-        return self._source.name
 
     def fetch(self) -> Sequence[Topic]:
         cached = self._load()
@@ -41,13 +47,31 @@ class CachedSource(Source):
             logger.info("数据源 %s 使用今日缓存", self.name)
             return cached
 
-        topics = list(self._source.fetch())
+        topics = list(self._fetch_online())
         if topics:
             self._save(topics)
         return topics
 
+    def _fetch_online(self) -> Sequence[Topic]:
+        response = self._session.get(
+            self.url,
+            timeout=self._timeout_seconds,
+            headers={"User-Agent": "AutoSearcher/0.1 (+local automation tool)"},
+        )
+        response.raise_for_status()
+        texts = self.parse(response.json())
+        return [
+            Topic(text=text.strip(), source=self.name, rank=index)
+            for index, text in enumerate(texts, start=1)
+            if isinstance(text, str) and text.strip()
+        ]
+
+    @abstractmethod
+    def parse(self, data: Any) -> Sequence[str]:
+        raise NotImplementedError
+
     def _load(self) -> list[Topic]:
-        if not self._cache_file.is_file():
+        if self._cache_file is None or not self._cache_file.is_file():
             return []
         try:
             payload = json.loads(self._cache_file.read_text(encoding="utf-8"))
@@ -78,6 +102,8 @@ class CachedSource(Source):
             return []
 
     def _save(self, topics: Sequence[Topic]) -> None:
+        if self._cache_file is None:
+            return
         payload = {
             "version": 1,
             "date": self._today().isoformat(),

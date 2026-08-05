@@ -13,7 +13,6 @@ from auto_searcher.schemas import AppConfig
 from auto_searcher.sources import (
     Source,
     BaiduSource,
-    CachedSource,
     TencentSource,
     ToutiaoSource,
 )
@@ -25,10 +24,11 @@ DEFAULT_CONFIG = default_config_path()
 
 def _build_topic_gather(config: AppConfig, only: str | None = None) -> TopicGather:
     timeout = config.sources.request_timeout_seconds
+    cache_dir = None if only else config.sources.cache_dir
     sources: dict[str, Callable[[], Source]] = {
-        "baidu": lambda: BaiduSource(timeout),
-        "tencent": lambda: TencentSource(timeout),
-        "toutiao": lambda: ToutiaoSource(timeout),
+        "baidu": lambda: BaiduSource(timeout, cache_dir),
+        "tencent": lambda: TencentSource(timeout, cache_dir),
+        "toutiao": lambda: ToutiaoSource(timeout, cache_dir),
     }
     names = (only,) if only else config.sources.enabled
     unknown = [name for name in names if name not in sources]
@@ -36,14 +36,8 @@ def _build_topic_gather(config: AppConfig, only: str | None = None) -> TopicGath
         available = ", ".join(sorted(sources))
         raise ValueError(f"未知数据源 {unknown}；可用数据源: {available}")
 
-    online_sources = [sources[name]() for name in names]
-    if not only and config.sources.cache_dir:
-        online_sources = [
-            CachedSource(source, config.sources.cache_dir)
-            for source in online_sources
-        ]
     return TopicGather(
-        online_sources=online_sources,
+        online_sources=[sources[name]() for name in names],
         fallback_file=None if only else config.sources.fallback_file,
     )
 

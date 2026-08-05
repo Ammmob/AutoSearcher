@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 from typing import Any
 
-from .base_source import HttpSource
+from .cached_source import CachedSource
 
 
-class BaiduSource(HttpSource):
+class BaiduSource(CachedSource):
     url = "https://top.baidu.com/api/board?tab=realtime"
 
     @property
