@@ -16,8 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 class EdgeBrowser(ChromiumBrowser):
-    _LEGACY_DEBUGGING_ADDRESS = "127.0.0.1:9222"
-
     @property
     def name(self) -> str:
         return self._name()
@@ -27,15 +25,60 @@ class EdgeBrowser(ChromiumBrowser):
         return "Edge"
 
     def _launch_command(self, executable: Path) -> tuple[list[str], str | None]:
-        command = [str(executable), *self._browser_config.args]
+        arguments, configured_port = self._extract_debugging_port(
+            self._browser_config.args
+        )
+        command = [str(executable), *arguments]
 
         if self._browser_manages_remote_debugging():
-            logger.info("检测到 Edge 内置远程调试已启用，不传入调试端口")
+            if configured_port is not None:
+                logger.warning(
+                    "Edge 使用浏览器内置远程调试，忽略启动参数中的调试端口 %s",
+                    configured_port or "（未指定值）",
+                )
+            else:
+                logger.info("检测到 Edge 内置远程调试已启用，不传入调试端口")
             return command, None
 
-        logger.info("未检测到 Edge 内置远程调试，使用兼容调试端口 9222")
-        command.append("--remote-debugging-port=9222")
-        return command, self._LEGACY_DEBUGGING_ADDRESS
+        port_value = "9222" if configured_port is None else configured_port
+        port = self._validated_debugging_port(port_value)
+        if configured_port is None:
+            logger.info("未检测到 Edge 内置远程调试，使用默认调试端口 9222")
+        else:
+            logger.info("未检测到 Edge 内置远程调试，使用配置的调试端口 %d", port)
+        command.append(f"--remote-debugging-port={port}")
+        return command, f"127.0.0.1:{port}"
+
+    @staticmethod
+    def _extract_debugging_port(arguments: tuple[str, ...]) -> tuple[list[str], str | None]:
+        option = "--remote-debugging-port"
+        remaining: list[str] = []
+        configured_port: str | None = None
+        index = 0
+        while index < len(arguments):
+            argument = arguments[index]
+            normalized = argument.casefold()
+            if normalized.startswith(f"{option}="):
+                configured_port = argument.split("=", maxsplit=1)[1]
+            elif normalized == option:
+                configured_port = ""
+                if index + 1 < len(arguments) and not arguments[index + 1].startswith("--"):
+                    configured_port = arguments[index + 1]
+                    index += 1
+            else:
+                remaining.append(argument)
+            index += 1
+        return remaining, configured_port
+
+    @staticmethod
+    def _validated_debugging_port(value: str) -> int:
+        try:
+            port = int(value)
+        except ValueError as exc:
+            raise RuntimeError("远程调试端口必须是有效整数") from exc
+        if not 1 <= port <= 65535:
+            raise RuntimeError("远程调试端口必须在 1 到 65535 之间")
+        return port
 
     def _browser_manages_remote_debugging(self) -> bool:
         user_data_dir = self._configured_user_data_dir(self._browser_config)

@@ -107,7 +107,7 @@ class EdgeBrowserTests(unittest.TestCase):
         ),
     )
     @patch.object(EdgeBrowser, "_browser_manages_remote_debugging", return_value=False)
-    def test_legacy_launch_uses_internal_debugging_port(
+    def test_legacy_launch_uses_default_and_configured_debugging_ports(
         self,
         _managed_debugging,
         _read_file_endpoint,
@@ -138,6 +138,8 @@ class EdgeBrowserTests(unittest.TestCase):
                 args=(
                     "--profile-directory=Profile 1",
                     "--user-data-dir=D:/EdgeProfile",
+                    "--remote-debugging-port",
+                    "9224",
                 ),
             ),
             SearchConfig(),
@@ -153,19 +155,28 @@ class EdgeBrowserTests(unittest.TestCase):
                 str(Path("C:/Program Files/Microsoft/Edge/msedge.exe")),
                 "--profile-directory=Profile 1",
                 "--user-data-dir=D:/EdgeProfile",
-                "--remote-debugging-port=9222",
+                "--remote-debugging-port=9224",
             ],
         )
         self.assertEqual(_read_file_endpoint.call_count, 2)
 
     @patch.object(EdgeBrowser, "_browser_manages_remote_debugging", return_value=True)
     def test_modern_edge_launch_omits_debugging_port(self, _managed_debugging) -> None:
-        browser = EdgeBrowser(BrowserConfig(), SearchConfig())
+        browser = EdgeBrowser(
+            BrowserConfig(
+                args=("--profile-directory=Profile 1", "--remote-debugging-port=9333")
+            ),
+            SearchConfig(),
+        )
         executable = Path("C:/Program Files/Microsoft/Edge/msedge.exe")
 
-        command, expected_address = browser._launch_command(executable)
+        with self.assertLogs("auto_searcher.browsers.edge_browser", "WARNING"):
+            command, expected_address = browser._launch_command(executable)
 
-        self.assertEqual(command, [str(executable)])
+        self.assertEqual(
+            command,
+            [str(executable), "--profile-directory=Profile 1"],
+        )
         self.assertIsNone(expected_address)
 
     def test_detects_browser_managed_debugging_from_local_state(self) -> None:

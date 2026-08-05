@@ -169,7 +169,7 @@ sources:
 | Field | Description |
 | --- | --- |
 | `type` | Browser implementation. Only `edge` is currently available. |
-| `args` | Optional Edge argument list for valued arguments and value-less flags. `--remote-debugging-port` is forbidden. |
+| `args` | Optional Edge argument list for valued arguments and value-less flags. |
 | `page_timeout_seconds` | Page navigation and element wait timeout. |
 
 For example, to select a user-data directory, profile, and value-less flags:
@@ -181,12 +181,15 @@ browser:
   args:
     - "--user-data-dir=%LOCALAPPDATA%/Microsoft/Edge/User Data"
     - "--profile-directory=Profile 1"
+    - "--remote-debugging-port=9224"
     - "--flag-switches-begin"
     - "--flag-switches-end"
 ```
 
 Environment variables in arguments are expanded automatically. A value-less
-flag is represented directly as a string.
+flag is represented directly as a string. Older Edge versions use the configured
+debugging port, defaulting to `9222` when omitted. Edge with browser-managed
+remote debugging emits a warning and ignores this argument.
 
 ### Search
 

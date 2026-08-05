@@ -83,13 +83,6 @@ def load_config(path: str | Path) -> AppConfig:
         if not isinstance(value, str) or not value.strip():
             raise ConfigError("browser.args 必须只包含非空字符串")
         argument = os.path.expandvars(value.strip())
-        normalized = argument.casefold()
-        if normalized == "--remote-debugging-port" or normalized.startswith(
-            "--remote-debugging-port="
-        ):
-            raise ConfigError(
-                "browser.args 不能包含 --remote-debugging-port，该参数由程序自动管理"
-            )
         browser_args.append(argument)
 
     browser = BrowserConfig(

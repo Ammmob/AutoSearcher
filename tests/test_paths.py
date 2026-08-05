@@ -118,20 +118,20 @@ class PathTests(unittest.TestCase):
             with self.assertRaisesRegex(ConfigError, "有限数字"):
                 load_config(config_path)
 
-    def test_browser_arguments_reject_remote_debugging_port(self) -> None:
-        for argument in ("--remote-debugging-port", "--REMOTE-DEBUGGING-PORT=9333"):
-            with self.subTest(argument=argument), tempfile.TemporaryDirectory() as temp_dir:
-                config_path = Path(temp_dir) / "config.yaml"
-                config_path.write_text(
-                    "browser:\n"
-                    f'  args: ["{argument}"]\n'
-                    "search: {}\n"
-                    "sources: {}\n",
-                    encoding="utf-8",
-                )
+    def test_browser_arguments_accept_remote_debugging_port(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "config.yaml"
+            config_path.write_text(
+                "browser:\n"
+                '  args: ["--remote-debugging-port=9333"]\n'
+                "search: {}\n"
+                "sources: {}\n",
+                encoding="utf-8",
+            )
 
-                with self.assertRaisesRegex(ConfigError, "由程序自动管理"):
-                    load_config(config_path)
+            config = load_config(config_path)
+
+        self.assertEqual(config.browser.args, ("--remote-debugging-port=9333",))
 
     def test_default_config_is_project_config_when_running_from_source(self) -> None:
         self.assertEqual(

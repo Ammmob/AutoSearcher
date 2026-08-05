@@ -166,7 +166,7 @@ sources:
 | 字段 | 说明 |
 | --- | --- |
 | `type` | 浏览器实现，目前仅支持 `edge`。 |
-| `args` | 可选的 Edge 启动参数列表，支持有值参数和无值开关。禁止配置 `--remote-debugging-port`。 |
+| `args` | 可选的 Edge 启动参数列表，支持有值参数和无值开关。 |
 | `page_timeout_seconds` | 页面跳转与元素等待超时。 |
 
 例如指定用户数据目录、Profile 和无值开关：
@@ -178,11 +178,14 @@ browser:
   args:
     - "--user-data-dir=%LOCALAPPDATA%/Microsoft/Edge/User Data"
     - "--profile-directory=Profile 1"
+    - "--remote-debugging-port=9224"
     - "--flag-switches-begin"
     - "--flag-switches-end"
 ```
 
 参数中的环境变量会自动展开。无值开关直接写成一个字符串即可。
+对于旧版 Edge，配置的调试端口会被使用；省略时默认使用 `9222`。对于启用了
+浏览器内置远程调试的新版 Edge，该参数会产生警告并被自动忽略。
 
 ### 搜索
 
