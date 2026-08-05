@@ -9,7 +9,6 @@ from pathlib import Path
 
 from auto_searcher import AutoSearcher, TopicGather
 from auto_searcher.browsers import Browser, EdgeBrowser
-from auto_searcher.browsers.backend import CdpBackend
 from auto_searcher.schemas import AppConfig
 from auto_searcher.sources import (
     Source,
@@ -49,14 +48,9 @@ def _build_topic_gather(config: AppConfig, only: str | None = None) -> TopicGath
     )
 
 
-def _build_backend(config: AppConfig) -> CdpBackend:
-    endpoint = CdpBackend.detect_endpoint(config.browser)
-    return CdpBackend(config.browser, config.search, endpoint=endpoint)
-
-
 def _build_browser(config: AppConfig) -> Browser:
     if config.browser.type == "edge":
-        return EdgeBrowser(_build_backend(config))
+        return EdgeBrowser(config.browser, config.search)
     raise ValueError(f"没有注册浏览器实现: {config.browser.type}")
 
 
@@ -106,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Edge 配置文件: {config.browser.profile_name}")
             debugger_address = config.browser.debugger_address
             if config.browser.auto_detect_debugger and config.browser.user_data_dir:
-                cdp_endpoint = CdpBackend.detect_endpoint(config.browser)
+                cdp_endpoint = EdgeBrowser.detect_endpoint(config.browser)
                 if cdp_endpoint is not None:
                     debugger_address = f"{cdp_endpoint.address}（CDP WebSocket）"
                 debugger_address = debugger_address or "自动检测（当前未发现）"

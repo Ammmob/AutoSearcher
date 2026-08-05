@@ -8,8 +8,8 @@ from auto_searcher.browsers.cdp import (
     CdpConnection,
     CdpError,
     CdpPage,
-    EdgeEndpoint,
-    read_edge_endpoint,
+    Endpoint,
+    read_active_endpoint,
     read_http_endpoint,
 )
 from auto_searcher.browsers.backend import CdpBackend
@@ -75,7 +75,7 @@ class CdpPageTests(unittest.TestCase):
         self.assertTrue(page.wait_for_value("document.readyState", "timeout"))
 
 
-class EdgeEndpointTests(unittest.TestCase):
+class EndpointTests(unittest.TestCase):
     @patch("auto_searcher.browsers.cdp.endpoint.http.client.HTTPConnection")
     def test_reads_classic_http_websocket_endpoint(self, connection_type) -> None:
         response = connection_type.return_value.getresponse.return_value
@@ -93,7 +93,7 @@ class EdgeEndpointTests(unittest.TestCase):
 
         self.assertEqual(
             endpoint,
-            EdgeEndpoint(
+            Endpoint(
                 "127.0.0.1:9222",
                 "ws://127.0.0.1:9222/devtools/browser/browser-id",
             ),
@@ -107,11 +107,11 @@ class EdgeEndpointTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            endpoint = read_edge_endpoint(user_data_dir)
+            endpoint = read_active_endpoint(user_data_dir)
 
         self.assertEqual(
             endpoint,
-            EdgeEndpoint(
+            Endpoint(
                 "127.0.0.1:9222",
                 "ws://127.0.0.1:9222/devtools/browser/browser-id",
             ),
@@ -125,7 +125,7 @@ class EdgeEndpointTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            endpoint = read_edge_endpoint(
+            endpoint = read_active_endpoint(
                 user_data_dir,
                 expected_address="127.0.0.1:9222",
             )
@@ -140,7 +140,7 @@ class EdgeEndpointTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            self.assertIsNone(read_edge_endpoint(user_data_dir))
+            self.assertIsNone(read_active_endpoint(user_data_dir))
 
 
 class CdpBackendTests(unittest.TestCase):
@@ -154,12 +154,12 @@ class CdpBackendTests(unittest.TestCase):
         ]
         page = cdp_page.return_value
         backend = CdpBackend(
-            BrowserConfig(),
-            SearchConfig(),
-            endpoint=EdgeEndpoint(
+            Endpoint(
                 "127.0.0.1:9222",
                 "ws://127.0.0.1:9222/devtools/browser/test",
             ),
+            SearchConfig(),
+            BrowserConfig().page_timeout_seconds,
             connection=connection,
             interaction=Mock(),
         )
@@ -181,25 +181,25 @@ class CdpBackendTests(unittest.TestCase):
         page.activate.assert_called_once_with()
 
     @patch("auto_searcher.browsers.backend.CdpPage")
-    def test_owned_browser_closes_the_whole_edge_instance(self, cdp_page) -> None:
+    def test_owned_browser_closes_the_whole_instance(self, cdp_page) -> None:
         connection = Mock()
         connection.command.side_effect = [
-            {"product": "Edg/151.0"},
+            {"product": "Chrome/151.0"},
             {"targetId": "target-1"},
             {"sessionId": "session-1"},
             {},
         ]
         backend = CdpBackend(
-            BrowserConfig(),
-            SearchConfig(),
-            endpoint=EdgeEndpoint(
+            Endpoint(
                 "127.0.0.1:9222",
                 "ws://127.0.0.1:9222/devtools/browser/test",
             ),
+            SearchConfig(),
+            BrowserConfig().page_timeout_seconds,
+            owns_browser=True,
             connection=connection,
             interaction=Mock(),
         )
-        backend._owns_browser = True
         backend.open()
 
         backend.close()

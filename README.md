@@ -53,14 +53,16 @@ flowchart LR
     Gather --> Runner[AutoSearcher]
     Runner --> Browser[Browser Interface]
     Browser --> Edge[EdgeBrowser]
-    Edge --> Search[Search and Browse]
+    Edge --> Backend[CdpBackend]
+    Backend --> CDP[Generic CDP Layer]
+    CDP --> Search[Search and Browse]
 ```
 
 The main dependencies point inward toward small interfaces:
 
 - `AutoSearcher` coordinates the run through the `Browser` contract.
-- `EdgeBrowser` delegates browser control to `CdpBackend`.
-- `CdpBackend` owns connection, tab, and browser lifecycle behavior.
+- `EdgeBrowser` owns Edge discovery, validation, launch, and lifecycle policy.
+- `CdpBackend` controls any compatible browser through a generic `Endpoint`.
 - `CdpInteraction` implements typing, clicking, and result browsing through CDP.
 - `TopicGather` owns source fallback, aggregation, shuffling, and deduplication.
 - `Source`, `HttpSource`, and `CachedSource` separate provider behavior from cache behavior.

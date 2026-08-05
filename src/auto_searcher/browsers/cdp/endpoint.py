@@ -1,4 +1,4 @@
-"""Resolve Edge's browser-level CDP WebSocket endpoint."""
+"""Resolve a browser-level CDP WebSocket endpoint."""
 
 import http.client
 import json
@@ -7,12 +7,12 @@ from pathlib import Path
 
 
 @dataclass(frozen=True, slots=True)
-class EdgeEndpoint:
+class Endpoint:
     address: str
     websocket_url: str
 
 
-def read_http_endpoint(address: str) -> EdgeEndpoint | None:
+def read_http_endpoint(address: str) -> Endpoint | None:
     connection: http.client.HTTPConnection | None = None
     try:
         host, port_text = address.rsplit(":", maxsplit=1)
@@ -23,13 +23,10 @@ def read_http_endpoint(address: str) -> EdgeEndpoint | None:
         if response.status != 200:
             return None
         data = json.loads(response.read().decode("utf-8"))
-        product = data.get("Browser")
         websocket_url = data.get("webSocketDebuggerUrl")
-        if not isinstance(product, str) or not product.startswith("Edg/"):
-            return None
         if not isinstance(websocket_url, str) or not websocket_url.startswith("ws"):
             return None
-        return EdgeEndpoint(address, websocket_url)
+        return Endpoint(address, websocket_url)
     except (OSError, ValueError, json.JSONDecodeError):
         return None
     finally:
@@ -37,10 +34,10 @@ def read_http_endpoint(address: str) -> EdgeEndpoint | None:
             connection.close()
 
 
-def read_edge_endpoint(
+def read_active_endpoint(
     user_data_dir: str | Path,
     expected_address: str | None = None,
-) -> EdgeEndpoint | None:
+) -> Endpoint | None:
     active_port_file = Path(user_data_dir) / "DevToolsActivePort"
     try:
         lines = active_port_file.read_text(encoding="utf-8").splitlines()
@@ -65,4 +62,4 @@ def read_edge_endpoint(
         host = expected_host
 
     address = f"{host}:{port}"
-    return EdgeEndpoint(address, f"ws://{address}{websocket_path}")
+    return Endpoint(address, f"ws://{address}{websocket_path}")

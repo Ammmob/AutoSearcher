@@ -37,7 +37,7 @@ class CdpConnection:
                 suppress_origin=True,
             )
         except (OSError, websocket.WebSocketException) as exc:
-            raise CdpError(f"无法连接 Edge DevTools WebSocket: {exc}") from exc
+            raise CdpError(f"无法连接浏览器 DevTools WebSocket: {exc}") from exc
 
     def close(self) -> None:
         if self._socket is None:
@@ -119,13 +119,13 @@ class CdpConnection:
         except (OSError, websocket.WebSocketException) as exc:
             raise CdpError(f"接收 CDP 响应失败: {exc}") from exc
         if not isinstance(raw_message, str):
-            raise CdpError("Edge 返回了非文本 CDP 消息")
+            raise CdpError("浏览器返回了非文本 CDP 消息")
         try:
             message = json.loads(raw_message)
         except json.JSONDecodeError as exc:
-            raise CdpError("Edge 返回了无效的 CDP JSON") from exc
+            raise CdpError("浏览器返回了无效的 CDP JSON") from exc
         if not isinstance(message, dict):
-            raise CdpError("Edge 返回了无效的 CDP 消息")
+            raise CdpError("浏览器返回了无效的 CDP 消息")
         return message
 
     @staticmethod

@@ -45,20 +45,22 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 
 ```mermaid
 flowchart LR
-    Sources[Online Sources] --> Cache[Daily Cache]
+    Sources[在线数据源] --> Cache[每日缓存]
     Cache --> Gather[TopicGather]
-    Fallback[Fallback Topics] -. all sources fail .-> Gather
+    Fallback[保险话题] -. 全部来源失败 .-> Gather
     Gather --> Runner[AutoSearcher]
-    Runner --> Browser[Browser Interface]
+    Runner --> Browser[Browser 接口]
     Browser --> Edge[EdgeBrowser]
-    Edge --> Search[Search and Browse]
+    Edge --> Backend[CdpBackend]
+    Backend --> CDP[通用 CDP 层]
+    CDP --> Search[搜索与浏览]
 ```
 
 核心依赖统一指向小型接口：
 
 - `AutoSearcher` 通过 `Browser` 接口协调完整运行流程。
-- `EdgeBrowser` 将浏览器控制委托给 `CdpBackend`。
-- `CdpBackend` 负责连接、标签页和浏览器生命周期。
+- `EdgeBrowser` 负责 Edge 的发现、校验、启动和生命周期策略。
+- `CdpBackend` 通过通用 `Endpoint` 控制任意兼容浏览器。
 - `CdpInteraction` 通过 CDP 实现输入、点击和结果页浏览。
 - `TopicGather` 负责来源容错、聚合、随机排序、去重和保险话题切换。
 - `Source`、`HttpSource` 和 `CachedSource` 分离来源行为与缓存行为。
