@@ -6,8 +6,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True, slots=True)
 class BrowserConfig:
     type: str = "edge"
-    user_data_dir: str | None = None
-    profile_name: str | None = None
+    args: tuple[str, ...] = ()
     page_timeout_seconds: float = 20.0
 
 

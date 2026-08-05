@@ -145,6 +145,7 @@ The default configuration is [config/config.yaml](config/config.yaml):
 browser:
   type: edge
   page_timeout_seconds: 20
+  args: []
 
 search:
   url: https://www.bing.com
@@ -168,9 +169,24 @@ sources:
 | Field | Description |
 | --- | --- |
 | `type` | Browser implementation. Only `edge` is currently available. |
-| `user_data_dir` | Optional `--user-data-dir` launch argument. When omitted, the default Edge directory is still used for endpoint discovery. |
-| `profile_name` | Optional `--profile-directory` launch argument such as `Default` or `Profile 1`. |
+| `args` | Optional Edge argument list for valued arguments and value-less flags. `--remote-debugging-port` is forbidden. |
 | `page_timeout_seconds` | Page navigation and element wait timeout. |
+
+For example, to select a user-data directory, profile, and value-less flags:
+
+```yaml
+browser:
+  type: edge
+  page_timeout_seconds: 20
+  args:
+    - "--user-data-dir=%LOCALAPPDATA%/Microsoft/Edge/User Data"
+    - "--profile-directory=Profile 1"
+    - "--flag-switches-begin"
+    - "--flag-switches-end"
+```
+
+Environment variables in arguments are expanded automatically. A value-less
+flag is represented directly as a string.
 
 ### Search
 
@@ -216,8 +232,8 @@ line; blank lines and lines beginning with `#` are ignored.
 
 The debugging port is not configurable. AutoSearcher reads the browser-wide
 state corresponding to `edge://inspect/#remote-debugging` from `Local State`
-and selects the launch mode automatically. `--profile-directory` and
-`--user-data-dir` are still passed only when explicitly configured in YAML.
+and selects the launch mode automatically. Other launch arguments are passed
+only when explicitly listed in `browser.args`.
 
 For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
 then reads the browser-level WebSocket path, opens a dedicated tab through CDP,

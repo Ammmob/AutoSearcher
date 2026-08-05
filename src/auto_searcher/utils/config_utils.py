@@ -1,4 +1,5 @@
 import math
+import os
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -74,30 +75,26 @@ def load_config(path: str | Path) -> AppConfig:
     if browser_type != "edge":
         raise ConfigError(f"暂不支持浏览器类型: {browser_type}")
 
-    user_data_dir = browser_raw.get("user_data_dir")
-    try:
-        if user_data_dir:
-            user_data_path = resolve_configured_path(
-                user_data_dir,
-                config_path.parent,
+    args_raw = browser_raw.get("args", [])
+    if not isinstance(args_raw, list):
+        raise ConfigError("browser.args 必须是字符串列表")
+    browser_args: list[str] = []
+    for value in args_raw:
+        if not isinstance(value, str) or not value.strip():
+            raise ConfigError("browser.args 必须只包含非空字符串")
+        argument = os.path.expandvars(value.strip())
+        normalized = argument.casefold()
+        if normalized == "--remote-debugging-port" or normalized.startswith(
+            "--remote-debugging-port="
+        ):
+            raise ConfigError(
+                "browser.args 不能包含 --remote-debugging-port，该参数由程序自动管理"
             )
-        else:
-            user_data_path = None
-    except PathResolutionError as exc:
-        raise ConfigError(str(exc)) from exc
-
-    configured_profile = browser_raw.get("profile_name")
-    if configured_profile is None:
-        profile_name = None
-    else:
-        profile_name = str(configured_profile).strip()
-        if not profile_name:
-            raise ConfigError("browser.profile_name 不能为空")
+        browser_args.append(argument)
 
     browser = BrowserConfig(
         type=browser_type,
-        user_data_dir=str(user_data_path) if user_data_path else None,
-        profile_name=profile_name,
+        args=tuple(browser_args),
         page_timeout_seconds=_positive_float(
             browser_raw.get("page_timeout_seconds", 20),
             "browser.page_timeout_seconds",

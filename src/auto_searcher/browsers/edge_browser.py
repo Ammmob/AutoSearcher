@@ -27,13 +27,7 @@ class EdgeBrowser(ChromiumBrowser):
         return "Edge"
 
     def _launch_command(self, executable: Path) -> tuple[list[str], str | None]:
-        command = [str(executable)]
-        if self._browser_config.profile_name:
-            command.append(
-                f"--profile-directory={self._browser_config.profile_name}"
-            )
-        if self._browser_config.user_data_dir:
-            command.append(f"--user-data-dir={self._browser_config.user_data_dir}")
+        command = [str(executable), *self._browser_config.args]
 
         if self._browser_manages_remote_debugging():
             logger.info("检测到 Edge 内置远程调试已启用，不传入调试端口")
@@ -44,11 +38,7 @@ class EdgeBrowser(ChromiumBrowser):
         return command, self._LEGACY_DEBUGGING_ADDRESS
 
     def _browser_manages_remote_debugging(self) -> bool:
-        user_data_dir = (
-            Path(self._browser_config.user_data_dir)
-            if self._browser_config.user_data_dir
-            else self._default_user_data_dir()
-        )
+        user_data_dir = self._configured_user_data_dir(self._browser_config)
         local_state = user_data_dir / "Local State"
         try:
             data = json.loads(local_state.read_text(encoding="utf-8"))

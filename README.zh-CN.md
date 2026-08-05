@@ -142,6 +142,7 @@ auto-searcher --verbose
 browser:
   type: edge
   page_timeout_seconds: 20
+  args: []
 
 search:
   url: https://www.bing.com
@@ -165,9 +166,23 @@ sources:
 | 字段 | 说明 |
 | --- | --- |
 | `type` | 浏览器实现，目前仅支持 `edge`。 |
-| `user_data_dir` | 可选的 `--user-data-dir` 启动参数；省略后仍使用 Edge 默认目录发现端点。 |
-| `profile_name` | 可选的 `--profile-directory` 启动参数，例如 `Default` 或 `Profile 1`。 |
+| `args` | 可选的 Edge 启动参数列表，支持有值参数和无值开关。禁止配置 `--remote-debugging-port`。 |
 | `page_timeout_seconds` | 页面跳转与元素等待超时。 |
+
+例如指定用户数据目录、Profile 和无值开关：
+
+```yaml
+browser:
+  type: edge
+  page_timeout_seconds: 20
+  args:
+    - "--user-data-dir=%LOCALAPPDATA%/Microsoft/Edge/User Data"
+    - "--profile-directory=Profile 1"
+    - "--flag-switches-begin"
+    - "--flag-switches-end"
+```
+
+参数中的环境变量会自动展开。无值开关直接写成一个字符串即可。
 
 ### 搜索
 
@@ -211,7 +226,7 @@ sources:
 
 调试端口不是配置项。AutoSearcher 读取 Edge 用户数据根目录下 `Local State` 中
 与 `edge://inspect/#remote-debugging` 对应的浏览器级状态，自动选择启动方式。
-`--profile-directory` 和 `--user-data-dir` 仍然只在 YAML 明确配置时传入。
+其他启动参数只在 `browser.args` 中明确配置时传入。
 
 Edge 151 需要先在 `edge://inspect` 中启用一次远程调试。之后 AutoSearcher
 读取浏览器级 WebSocket 地址，通过 CDP 创建独立标签页；接管运行结束时只关闭

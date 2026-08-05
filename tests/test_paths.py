@@ -46,17 +46,34 @@ class PathTests(unittest.TestCase):
         with patch.dict(os.environ, {"LOCALAPPDATA": str(local_app_data)}):
             config = load_config(application_dir() / "config" / "config.yaml")
 
-        self.assertIsNone(config.browser.user_data_dir)
-        self.assertIsNone(config.browser.profile_name)
+        self.assertEqual(config.browser.args, ())
 
-    def test_configured_user_directory_does_not_infer_profile(self) -> None:
+    def test_browser_arguments_expand_environment_variables(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            user_data_dir = temp_path / "User Data"
             config_path = temp_path / "config.yaml"
+            with patch.dict(os.environ, {"AUTOS_EDGE_DATA": "D:/Edge Data"}):
+                config_path.write_text(
+                    "browser:\n"
+                    '  args: [\"--user-data-dir=%AUTOS_EDGE_DATA%\"]\n'
+                    "search: {}\n"
+                    "sources: {}\n",
+                    encoding="utf-8",
+                )
+
+                config = load_config(config_path)
+
+        self.assertEqual(config.browser.args, ("--user-data-dir=D:/Edge Data",))
+
+    def test_browser_arguments_preserve_valued_and_flag_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "config.yaml"
             config_path.write_text(
                 "browser:\n"
-                f"  user_data_dir: {user_data_dir.as_posix()}\n"
+                "  args:\n"
+                '    - "--profile-directory=Profile 1"\n'
+                '    - "--flag-switches-begin"\n'
+                '    - "--flag-switches-end"\n'
                 "search: {}\n"
                 "sources: {}\n",
                 encoding="utf-8",
@@ -64,26 +81,14 @@ class PathTests(unittest.TestCase):
 
             config = load_config(config_path)
 
-        self.assertEqual(config.browser.user_data_dir, str(user_data_dir.resolve()))
-        self.assertIsNone(config.browser.profile_name)
-
-    def test_configured_edge_profile_is_preserved(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            user_data_dir = temp_path / "User Data"
-            config_path = temp_path / "config.yaml"
-            config_path.write_text(
-                "browser:\n"
-                f"  user_data_dir: {user_data_dir.as_posix()}\n"
-                "  profile_name: Default\n"
-                "search: {}\n"
-                "sources: {}\n",
-                encoding="utf-8",
-            )
-
-            config = load_config(config_path)
-
-        self.assertEqual(config.browser.profile_name, "Default")
+        self.assertEqual(
+            config.browser.args,
+            (
+                "--profile-directory=Profile 1",
+                "--flag-switches-begin",
+                "--flag-switches-end",
+            ),
+        )
 
     def test_config_rejects_non_finite_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -113,21 +118,20 @@ class PathTests(unittest.TestCase):
             with self.assertRaisesRegex(ConfigError, "有限数字"):
                 load_config(config_path)
 
-    def test_profile_named_auto_is_treated_as_an_explicit_profile(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            config_path = temp_path / "config.yaml"
-            config_path.write_text(
-                "browser:\n"
-                "  profile_name: auto\n"
-                "search: {}\n"
-                "sources: {}\n",
-                encoding="utf-8",
-            )
+    def test_browser_arguments_reject_remote_debugging_port(self) -> None:
+        for argument in ("--remote-debugging-port", "--REMOTE-DEBUGGING-PORT=9333"):
+            with self.subTest(argument=argument), tempfile.TemporaryDirectory() as temp_dir:
+                config_path = Path(temp_dir) / "config.yaml"
+                config_path.write_text(
+                    "browser:\n"
+                    f'  args: ["{argument}"]\n'
+                    "search: {}\n"
+                    "sources: {}\n",
+                    encoding="utf-8",
+                )
 
-            config = load_config(config_path)
-
-        self.assertEqual(config.browser.profile_name, "auto")
+                with self.assertRaisesRegex(ConfigError, "由程序自动管理"):
+                    load_config(config_path)
 
     def test_default_config_is_project_config_when_running_from_source(self) -> None:
         self.assertEqual(

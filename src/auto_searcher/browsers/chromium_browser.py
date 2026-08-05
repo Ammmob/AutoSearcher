@@ -73,7 +73,7 @@ class ChromiumBrowser(Browser):
     @classmethod
     def detect_endpoint(cls, browser_config: BrowserConfig) -> Endpoint | None:
         candidates: list[Endpoint] = []
-        endpoint_dir = browser_config.user_data_dir or cls._default_user_data_dir()
+        endpoint_dir = cls._configured_user_data_dir(browser_config)
         file_endpoint = read_active_endpoint(endpoint_dir)
         if file_endpoint is not None:
             candidates.append(file_endpoint)
@@ -141,9 +141,7 @@ class ChromiumBrowser(Browser):
             self._browser_config.page_timeout_seconds,
             10,
         )
-        endpoint_dir = (
-            self._browser_config.user_data_dir or self._default_user_data_dir()
-        )
+        endpoint_dir = self._configured_user_data_dir(self._browser_config)
         while time.monotonic() < deadline:
             endpoint = read_active_endpoint(endpoint_dir, expected_address)
             if endpoint is None and expected_address:
@@ -162,6 +160,16 @@ class ChromiumBrowser(Browser):
     @abstractmethod
     def _launch_command(self, executable: Path) -> tuple[list[str], str | None]:
         raise NotImplementedError
+
+    @classmethod
+    def _configured_user_data_dir(cls, browser_config: BrowserConfig) -> Path:
+        option = "--user-data-dir"
+        for index, argument in enumerate(browser_config.args):
+            if argument.casefold().startswith(f"{option}="):
+                return Path(argument.split("=", maxsplit=1)[1])
+            if argument.casefold() == option and index + 1 < len(browser_config.args):
+                return Path(browser_config.args[index + 1])
+        return cls._default_user_data_dir()
 
     @classmethod
     @abstractmethod

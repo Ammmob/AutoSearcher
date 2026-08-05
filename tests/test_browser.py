@@ -84,7 +84,7 @@ class EdgeBrowserTests(unittest.TestCase):
         _is_supported_endpoint,
     ) -> None:
         config = BrowserConfig(
-            user_data_dir="D:/EdgeProfile",
+            args=("--user-data-dir=D:/EdgeProfile",),
         )
 
         endpoint = EdgeBrowser.detect_endpoint(config)
@@ -135,8 +135,10 @@ class EdgeBrowserTests(unittest.TestCase):
 
         explicit_browser = EdgeBrowser(
             BrowserConfig(
-                user_data_dir="D:/EdgeProfile",
-                profile_name="Profile 1",
+                args=(
+                    "--profile-directory=Profile 1",
+                    "--user-data-dir=D:/EdgeProfile",
+                ),
             ),
             SearchConfig(),
             sleeper=lambda _: None,
@@ -174,7 +176,7 @@ class EdgeBrowserTests(unittest.TestCase):
                 encoding="utf-8",
             )
             browser = EdgeBrowser(
-                BrowserConfig(user_data_dir=str(user_data_dir)),
+                BrowserConfig(args=(f"--user-data-dir={user_data_dir}",)),
                 SearchConfig(),
             )
 
