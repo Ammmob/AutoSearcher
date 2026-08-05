@@ -6,6 +6,7 @@ import subprocess
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from pathlib import Path
 from types import TracebackType
 
 from auto_searcher.schemas import BrowserConfig, SearchConfig
@@ -16,6 +17,7 @@ from .cdp import (
     CdpError,
     CdpSession,
     Endpoint,
+    port_is_available,
     read_active_endpoint,
     read_http_endpoint,
 )
@@ -23,7 +25,6 @@ from .edge_runtime import (
     edge_process_is_running,
     find_edge_executable,
     listening_edge_addresses,
-    port_is_available,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class Browser(ABC):
     ) -> None:
         self.close()
 
-class EdgeBrowser(Browser):
+class ChromiumBrowser(Browser):
     DEFAULT_DEBUGGER_PORT = 9222
 
     def __init__(
@@ -79,10 +80,6 @@ class EdgeBrowser(Browser):
         self._session = session
         self._rng = rng
         self._sleep = sleeper
-
-    @property
-    def name(self) -> str:
-        return "Edge"
 
     def open(self) -> None:
         logger.info("使用浏览器: %s", self.name)
@@ -138,7 +135,7 @@ class EdgeBrowser(Browser):
             if http_endpoint is not None:
                 candidates.append(http_endpoint)
         elif browser_config.auto_detect_debugger:
-            for address in listening_edge_addresses():
+            for address in cls._listening_addresses():
                 http_endpoint = read_http_endpoint(address)
                 if http_endpoint is not None:
                     candidates.append(http_endpoint)
@@ -148,16 +145,16 @@ class EdgeBrowser(Browser):
             if endpoint.websocket_url in checked:
                 continue
             checked.add(endpoint.websocket_url)
-            if cls._is_edge_endpoint(
+            if cls._is_supported_endpoint(
                 endpoint,
                 browser_config.page_timeout_seconds,
             ):
-                logger.info("发现可接管的 Edge CDP 端点: %s", endpoint.address)
+                logger.info("发现可接管的 %s CDP 端点: %s", cls._name(), endpoint.address)
                 return endpoint
         return None
 
-    @staticmethod
-    def _is_edge_endpoint(endpoint: Endpoint, timeout: float) -> bool:
+    @classmethod
+    def _is_supported_endpoint(cls, endpoint: Endpoint, timeout: float) -> bool:
         connection = CdpConnection(endpoint.websocket_url, timeout)
         try:
             connection.open()
@@ -167,16 +164,16 @@ class EdgeBrowser(Browser):
         finally:
             connection.close()
         product = version.get("product")
-        return isinstance(product, str) and product.startswith("Edg/")
+        return isinstance(product, str) and cls._supports_product(product)
 
     def _launch(self) -> Endpoint:
-        executable = find_edge_executable()
+        executable = self._find_executable()
         if executable is None:
-            raise RuntimeError("没有找到 Microsoft Edge")
-        if edge_process_is_running():
+            raise RuntimeError(f"没有找到 {self.name}")
+        if self._process_is_running():
             raise RuntimeError(
-                "Edge 正在运行，但没有发现可用的 CDP WebSocket。"
-                "请完全退出 Edge，或启用远程调试后重试。"
+                f"{self.name} 正在运行，但没有发现可用的 CDP WebSocket。"
+                f"请完全退出 {self.name}，或启用远程调试后重试。"
             )
 
         user_data_dir = self._browser_config.user_data_dir
@@ -201,7 +198,7 @@ class EdgeBrowser(Browser):
             port = 0
             expected_address = None
         command.append(f"--remote-debugging-port={port}")
-        logger.info("启动 Edge，通过 CDP WebSocket 连接")
+        logger.info("启动 %s，通过 CDP WebSocket 连接", self.name)
 
         try:
             subprocess.Popen(
@@ -211,24 +208,93 @@ class EdgeBrowser(Browser):
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
         except OSError as exc:
-            raise RuntimeError(f"无法启动 Edge: {exc}") from exc
+            raise RuntimeError(f"无法启动 {self.name}: {exc}") from exc
 
         deadline = time.monotonic() + min(
             self._browser_config.page_timeout_seconds,
             10,
         )
-        endpoint_dir = user_data_dir or default_edge_user_data_dir()
+        endpoint_dir = user_data_dir or self._default_user_data_dir()
         while time.monotonic() < deadline:
             endpoint = read_active_endpoint(endpoint_dir, expected_address)
             if endpoint is None and expected_address:
                 endpoint = read_http_endpoint(expected_address)
-            if endpoint is not None and self._is_edge_endpoint(
+            if endpoint is not None and self._is_supported_endpoint(
                 endpoint,
                 self._browser_config.page_timeout_seconds,
             ):
                 return endpoint
             self._sleep(0.2)
         raise RuntimeError(
-            "Edge 已启动，但没有开放可用的 CDP WebSocket。"
-            "Edge 151 请在 edge://inspect 中启用远程调试。"
+            f"{self.name} 已启动，但没有开放可用的 CDP WebSocket。"
+            f"{self._remote_debugging_hint()}"
         )
+
+    @classmethod
+    @abstractmethod
+    def _name(cls) -> str:
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def _find_executable() -> Path | None:
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def _process_is_running() -> bool:
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def _listening_addresses() -> tuple[str, ...]:
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def _default_user_data_dir() -> Path:
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def _supports_product(product: str) -> bool:
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def _remote_debugging_hint() -> str:
+        raise NotImplementedError
+
+
+class EdgeBrowser(ChromiumBrowser):
+    @property
+    def name(self) -> str:
+        return self._name()
+
+    @classmethod
+    def _name(cls) -> str:
+        return "Edge"
+
+    @staticmethod
+    def _find_executable() -> Path | None:
+        return find_edge_executable()
+
+    @staticmethod
+    def _process_is_running() -> bool:
+        return edge_process_is_running()
+
+    @staticmethod
+    def _listening_addresses() -> tuple[str, ...]:
+        return listening_edge_addresses()
+
+    @staticmethod
+    def _default_user_data_dir() -> Path:
+        return default_edge_user_data_dir()
+
+    @staticmethod
+    def _supports_product(product: str) -> bool:
+        return product.startswith("Edg/")
+
+    @staticmethod
+    def _remote_debugging_hint() -> str:
+        return "Edge 151 请在 edge://inspect 中启用远程调试。"

@@ -2,6 +2,7 @@
 
 import http.client
 import json
+import socket
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -10,6 +11,21 @@ from pathlib import Path
 class Endpoint:
     address: str
     websocket_url: str
+
+
+def port_is_available(port: int) -> bool:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                listener.setsockopt(
+                    socket.SOL_SOCKET,
+                    socket.SO_EXCLUSIVEADDRUSE,
+                    1,
+                )
+            listener.bind(("127.0.0.1", port))
+    except OSError:
+        return False
+    return True
 
 
 def read_http_endpoint(address: str) -> Endpoint | None:

@@ -50,7 +50,8 @@ flowchart LR
     Fallback[保险话题] -. 全部来源失败 .-> Gather
     Gather --> Runner[AutoSearcher]
     Runner --> Browser[Browser 接口]
-    Browser --> Edge[EdgeBrowser]
+    Browser --> Chromium[ChromiumBrowser]
+    Chromium --> Edge[EdgeBrowser]
     Edge --> Session[CdpSession]
     Session --> CDP[通用 CDP 层]
     CDP --> Search[搜索与浏览]
@@ -59,7 +60,8 @@ flowchart LR
 核心依赖统一指向小型接口：
 
 - `AutoSearcher` 通过 `Browser` 接口协调完整运行流程。
-- `EdgeBrowser` 负责 Edge 的发现、校验、启动和生命周期策略。
+- `ChromiumBrowser` 实现通用的 CDP 发现、启动和会话流程。
+- `EdgeBrowser` 只提供 Edge 专属的可执行文件、进程、产品标识和调试规则。
 - `CdpSession` 通过通用 `Endpoint` 控制任意兼容浏览器。
 - `CdpInteraction` 通过 CDP 实现输入、点击和结果页浏览。
 - `TopicGather` 负责来源容错、聚合、随机排序、去重和保险话题切换。

@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from auto_searcher.browsers import Browser, EdgeBrowser
+from auto_searcher.browsers import Browser, ChromiumBrowser, EdgeBrowser
 from auto_searcher.browsers.cdp import CdpSession, Endpoint
 from auto_searcher.schemas import BrowserConfig, SearchConfig
 
@@ -22,6 +22,7 @@ class BrowserTests(unittest.TestCase):
         browser.close()
 
         self.assertIsInstance(browser, Browser)
+        self.assertIsInstance(browser, ChromiumBrowser)
         self.assertEqual(browser.name, "Edge")
         session.open.assert_called_once_with()
         session.search.assert_called_once_with("topic")
@@ -30,7 +31,7 @@ class BrowserTests(unittest.TestCase):
 
 
 class EdgeBrowserTests(unittest.TestCase):
-    @patch.object(EdgeBrowser, "_is_edge_endpoint", return_value=True)
+    @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch(
         "auto_searcher.browsers.browser.read_active_endpoint",
         return_value=Endpoint(
@@ -41,7 +42,7 @@ class EdgeBrowserTests(unittest.TestCase):
     def test_detects_endpoint_from_active_port_file(
         self,
         _read_endpoint,
-        is_edge_endpoint,
+        is_supported_endpoint,
     ) -> None:
         config = BrowserConfig(
             user_data_dir="D:/EdgeProfile",
@@ -51,9 +52,9 @@ class EdgeBrowserTests(unittest.TestCase):
         endpoint = EdgeBrowser.detect_endpoint(config)
 
         self.assertEqual(endpoint.address, "127.0.0.1:9222")
-        is_edge_endpoint.assert_called_once()
+        is_supported_endpoint.assert_called_once()
 
-    @patch.object(EdgeBrowser, "_is_edge_endpoint", return_value=True)
+    @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch(
         "auto_searcher.browsers.browser.read_http_endpoint",
         return_value=Endpoint(
@@ -74,7 +75,7 @@ class EdgeBrowserTests(unittest.TestCase):
         _read_file_endpoint,
         _listening_addresses,
         _read_http_endpoint,
-        _is_edge_endpoint,
+        _is_supported_endpoint,
     ) -> None:
         config = BrowserConfig(
             user_data_dir="D:/EdgeProfile",
@@ -85,7 +86,7 @@ class EdgeBrowserTests(unittest.TestCase):
 
         self.assertEqual(endpoint.address, "127.0.0.1:9224")
 
-    @patch.object(EdgeBrowser, "_is_edge_endpoint", return_value=True)
+    @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch("auto_searcher.browsers.browser.subprocess.Popen")
     @patch("auto_searcher.browsers.browser.edge_process_is_running", return_value=False)
     @patch("auto_searcher.browsers.browser.port_is_available", return_value=True)
@@ -112,7 +113,7 @@ class EdgeBrowserTests(unittest.TestCase):
         _port_available,
         _edge_running,
         popen,
-        _is_edge_endpoint,
+        _is_supported_endpoint,
     ) -> None:
         browser = EdgeBrowser(
             BrowserConfig(user_data_dir="D:/EdgeProfile"),

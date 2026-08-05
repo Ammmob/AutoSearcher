@@ -52,7 +52,8 @@ flowchart LR
     Fallback[Fallback Topics] -. all sources fail .-> Gather
     Gather --> Runner[AutoSearcher]
     Runner --> Browser[Browser Interface]
-    Browser --> Edge[EdgeBrowser]
+    Browser --> Chromium[ChromiumBrowser]
+    Chromium --> Edge[EdgeBrowser]
     Edge --> Session[CdpSession]
     Session --> CDP[Generic CDP Layer]
     CDP --> Search[Search and Browse]
@@ -61,7 +62,8 @@ flowchart LR
 The main dependencies point inward toward small interfaces:
 
 - `AutoSearcher` coordinates the run through the `Browser` contract.
-- `EdgeBrowser` owns Edge discovery, validation, launch, and lifecycle policy.
+- `ChromiumBrowser` implements shared CDP discovery, launch, and session flow.
+- `EdgeBrowser` supplies only Edge-specific executable, process, product, and debugging rules.
 - `CdpSession` controls any compatible browser through a generic `Endpoint`.
 - `CdpInteraction` implements typing, clicking, and result browsing through CDP.
 - `TopicGather` owns source fallback, aggregation, shuffling, and deduplication.

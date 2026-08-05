@@ -2,7 +2,6 @@
 
 import csv
 import os
-import socket
 import subprocess
 from io import StringIO
 from pathlib import Path
@@ -76,18 +75,3 @@ def listening_edge_addresses() -> tuple[str, ...]:
         if 1 <= port <= 65535:
             ports.add(port)
     return tuple(f"127.0.0.1:{port}" for port in sorted(ports))
-
-
-def port_is_available(port: int) -> bool:
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-            if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
-                listener.setsockopt(
-                    socket.SOL_SOCKET,
-                    socket.SO_EXCLUSIVEADDRUSE,
-                    1,
-                )
-            listener.bind(("127.0.0.1", port))
-    except OSError:
-        return False
-    return True
