@@ -3,7 +3,6 @@
 from .connection import CdpConnection, CdpError
 from .endpoint import (
     Endpoint,
-    port_is_available,
     read_active_endpoint,
     read_http_endpoint,
 )
@@ -15,7 +14,6 @@ __all__ = [
     "CdpConnection",
     "CdpError",
     "Endpoint",
-    "port_is_available",
     "read_active_endpoint",
     "read_http_endpoint",
     "CdpPage",

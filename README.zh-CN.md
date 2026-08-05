@@ -212,15 +212,15 @@ sources:
 | 省略 `debugger_address` | 通过实时 HTTP DevTools 监听端口发现 Edge 131，或通过 `DevToolsActivePort` 中记录的浏览器 WebSocket 验证 Edge 151。 |
 | `debugger_address: host:port` | 只尝试配置中的固定地址。 |
 | `debugger_address: null` | 跳过接管并启动新浏览器。 |
-| 没有可接管的 Edge | `9222` 空闲时使用该端口启动，否则让 Edge 自动选择空闲端口。 |
+| 没有可接管的 Edge | 不传任何命令行参数启动 Edge，并等待其生成 `DevToolsActivePort`。 |
 
-启动 Edge 默认用户数据目录时，AutoSearcher 让 Edge 自行选择该目录，只传入配置文件
-和调试端口。只有真正使用自定义目录时才显式传入 `--user-data-dir`。
+AutoSearcher 启动 Edge 时不传配置文件、用户数据目录或远程调试端口。远程调试必须
+事先在浏览器中启用。
 
 Edge 151 需要先在 `edge://inspect` 中启用一次远程调试。之后 AutoSearcher
 读取浏览器级 WebSocket 地址，通过 CDP 创建独立标签页；接管运行结束时只关闭
-该标签页。如果 Edge 151 尚未运行，AutoSearcher 会启动普通用户配置并等待已
-启用的 WebSocket 服务。
+该标签页。如果 Edge 尚未运行，AutoSearcher 会正常启动它，然后等待已启用的
+WebSocket 服务。
 
 接管已有会话时，AutoSearcher 会新建标签页，任务结束后只关闭该标签页。由
 AutoSearcher 启动的浏览器归程序所有，任务结束时会关闭整个浏览器实例。

@@ -102,4 +102,4 @@ class EdgeBrowser(ChromiumBrowser):
 
     @staticmethod
     def _remote_debugging_hint() -> str:
-        return "Edge 151 请在 edge://inspect 中启用远程调试。"
+        return "请先在 Edge 中启用远程调试，并确认 DevToolsActivePort 已生成。"

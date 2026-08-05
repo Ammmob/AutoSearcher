@@ -217,17 +217,15 @@ line; blank lines and lines beginning with `#` are ignored.
 | `debugger_address` omitted | Detect Edge 131 through live HTTP DevTools listeners, or validate Edge 151 through the browser WebSocket recorded in `DevToolsActivePort`. |
 | `debugger_address: host:port` | Try only the configured endpoint. |
 | `debugger_address: null` | Skip attachment and start a new browser. |
-| No attachable Edge found | Start Edge on port `9222` when available; otherwise let Edge choose a free port. |
+| No attachable Edge found | Start Edge without command-line arguments and wait for its `DevToolsActivePort`. |
 
-When launching the normal Edge data directory, AutoSearcher lets Edge select that
-directory implicitly and passes only the profile and debugging port. An explicit
-`--user-data-dir` argument is reserved for genuinely custom directories.
+AutoSearcher does not pass a profile, user-data directory, or remote-debugging
+port when it starts Edge. Remote debugging must already be enabled in the browser.
 
 For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
 then reads the browser-level WebSocket path, opens a dedicated tab through CDP,
-and closes only that tab after an attached run. If Edge 151 is not running,
-AutoSearcher starts the normal profile and waits for the enabled WebSocket
-service.
+and closes only that tab after an attached run. If Edge is not running,
+AutoSearcher starts it normally and waits for the enabled WebSocket service.
 
 An attached session receives a new tab, and AutoSearcher closes only that tab at
 the end. A browser started by AutoSearcher is owned by the program and is closed

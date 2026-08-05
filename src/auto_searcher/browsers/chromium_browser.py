@@ -1,7 +1,6 @@
 """Shared Chromium browser implementation."""
 
 import logging
-import os
 import random
 import subprocess
 import time
@@ -17,7 +16,6 @@ from .cdp import (
     CdpError,
     CdpSession,
     Endpoint,
-    port_is_available,
     read_active_endpoint,
     read_http_endpoint,
 )
@@ -26,8 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 class ChromiumBrowser(Browser):
-    DEFAULT_DEBUGGER_PORT = 9222
-
     def __init__(
         self,
         browser_config: BrowserConfig,
@@ -142,28 +138,8 @@ class ChromiumBrowser(Browser):
             )
 
         user_data_dir = self._browser_config.user_data_dir
-        command = [
-            str(executable),
-            f"--profile-directory={self._browser_config.profile_name}",
-        ]
-        if user_data_dir and not self._uses_default_user_data_dir(user_data_dir):
-            command.append(f"--user-data-dir={user_data_dir}")
-
-        debugger_address = self._browser_config.debugger_address
-        if debugger_address:
-            try:
-                port = int(debugger_address.rsplit(":", maxsplit=1)[-1])
-            except ValueError as exc:
-                raise RuntimeError("远程调试地址端口无效") from exc
-            expected_address: str | None = debugger_address
-        elif port_is_available(self.DEFAULT_DEBUGGER_PORT):
-            port = self.DEFAULT_DEBUGGER_PORT
-            expected_address = f"127.0.0.1:{port}"
-        else:
-            port = 0
-            expected_address = None
-        command.append(f"--remote-debugging-port={port}")
-        logger.info("启动 %s，通过 CDP WebSocket 连接", self.name)
+        command = [str(executable)]
+        logger.info("启动 %s，等待浏览器开放 CDP WebSocket", self.name)
         logger.debug("浏览器启动参数: %s", subprocess.list2cmdline(command))
 
         try:
@@ -182,9 +158,7 @@ class ChromiumBrowser(Browser):
         )
         endpoint_dir = user_data_dir or self._default_user_data_dir()
         while time.monotonic() < deadline:
-            endpoint = read_active_endpoint(endpoint_dir, expected_address)
-            if endpoint is None and expected_address:
-                endpoint = read_http_endpoint(expected_address)
+            endpoint = read_active_endpoint(endpoint_dir)
             if endpoint is not None and self._is_supported_endpoint(
                 endpoint,
                 self._browser_config.page_timeout_seconds,
@@ -195,11 +169,6 @@ class ChromiumBrowser(Browser):
             f"{self.name} 已启动，但没有开放可用的 CDP WebSocket。"
             f"{self._remote_debugging_hint()}"
         )
-
-    def _uses_default_user_data_dir(self, user_data_dir: str | Path) -> bool:
-        configured = os.path.normcase(os.path.abspath(user_data_dir))
-        default = os.path.normcase(os.path.abspath(self._default_user_data_dir()))
-        return configured == default
 
     @classmethod
     @abstractmethod
