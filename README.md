@@ -19,9 +19,9 @@ The project only covers **topic collection → browser search → result browsin
 It contains no account, sign-in, reward, or points logic.
 
 > [!IMPORTANT]
-> Existing-browser attachment currently targets the classic HTTP DevTools
-> discovery interface available in Edge 131. Edge 151 WebSocket-only attachment
-> is planned but not implemented yet.
+> Edge 151 WebSocket/CDP support is experimental until it has been verified on
+> additional machines. Enable remote debugging in `edge://inspect` before using
+> a normal Edge 151 profile.
 
 ## ✨ Highlights
 
@@ -36,8 +36,9 @@ It contains no account, sign-in, reward, or points logic.
 
 ## 🗺️ Roadmap
 
-- [ ] Add Edge 151 WebSocket/CDP session attachment.
-- [ ] Introduce a transport-neutral browser session layer.
+- [x] Add experimental Edge 151 WebSocket/CDP session attachment.
+- [ ] Validate Edge 151 attachment and launch behavior on additional machines.
+- [ ] Consolidate shared interaction pacing across WebDriver and CDP.
 - [ ] Build a desktop GUI on top of the stable application interfaces.
 - [ ] Add clearer release versioning and automated GitHub builds.
 
@@ -207,10 +208,16 @@ line; blank lines and lines beginning with `#` are ignored.
 
 | Configuration | Behavior |
 | --- | --- |
-| `debugger_address` omitted | Enumerate live TCP listeners owned by `msedge.exe`, validate them through `/json/version`, and attach to the first valid Edge endpoint. |
+| `debugger_address` omitted | Detect Edge 131 through live HTTP DevTools listeners, or validate Edge 151 through the browser WebSocket recorded in `DevToolsActivePort`. |
 | `debugger_address: host:port` | Try only the configured endpoint. |
 | `debugger_address: null` | Skip attachment and start a new browser. |
 | No attachable Edge found | Start Edge on port `9222` when available; otherwise let Edge choose a free port. |
+
+For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
+then reads the browser-level WebSocket path, opens a dedicated tab through CDP,
+and closes only that tab after an attached run. If Edge 151 is not running,
+AutoSearcher starts the normal profile and waits for the enabled WebSocket
+service instead of creating an EdgeDriver session.
 
 An attached session receives a new tab, and AutoSearcher closes only that tab at
 the end. A browser started by AutoSearcher is owned by the program and is closed
@@ -237,6 +244,7 @@ AutoSearcher/
 │  ├─ auto_searcher.py     Search workflow coordinator
 │  ├─ topic_gather.py      Topic aggregation and fallback
 │  ├─ browsers/            Browser hierarchy and interactions
+│  │  └─ cdp/              Edge 151 CDP transport and interactions
 │  ├─ schemas/             Configuration and search structures
 │  ├─ sources/             Source hierarchy and daily cache
 │  └─ utils/               Configuration and path helpers

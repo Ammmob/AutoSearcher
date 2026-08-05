@@ -101,9 +101,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Edge 配置文件: {config.browser.profile_name}")
             debugger_address = config.browser.debugger_address
             if config.browser.auto_detect_debugger and config.browser.user_data_dir:
-                debugger_address = EdgeBrowser.detect_debugger_address(
-                    config.browser.user_data_dir
-                )
+                cdp_endpoint = EdgeBrowser.detect_cdp_endpoint(config.browser)
+                if cdp_endpoint is not None:
+                    debugger_address = f"{cdp_endpoint.address}（CDP WebSocket）"
+                else:
+                    debugger_address = EdgeBrowser.detect_debugger_address(
+                        config.browser.user_data_dir
+                    )
                 debugger_address = debugger_address or "自动检测（当前未发现）"
             elif debugger_address is None:
                 debugger_address = "已禁用"

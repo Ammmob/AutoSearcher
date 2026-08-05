@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import Mock, call, patch
 
 from auto_searcher.browsers import Browser, EdgeBrowser, SearchBrowser
+from auto_searcher.browsers.cdp import EdgeEndpoint
 from auto_searcher.schemas import BrowserConfig, SearchConfig
 from selenium.webdriver.common.by import By
 
@@ -17,6 +18,116 @@ class BrowserTests(unittest.TestCase):
 
     def test_required_selenium_resources_are_available(self) -> None:
         EdgeBrowser.validate_runtime()
+
+    @patch("auto_searcher.browsers.edge_browser.CdpEdgeBrowser")
+    @patch.object(EdgeBrowser, "_get_debugger_product", return_value=None)
+    @patch(
+        "auto_searcher.browsers.edge_browser.read_edge_endpoint",
+        return_value=EdgeEndpoint(
+            "127.0.0.1:9222",
+            "ws://127.0.0.1:9222/devtools/browser/test",
+        ),
+    )
+    def test_open_uses_cdp_when_only_websocket_discovery_is_available(
+        self,
+        _read_edge_endpoint,
+        _get_debugger_product,
+        cdp_edge_browser,
+    ) -> None:
+        config = BrowserConfig(
+            user_data_dir="D:/EdgeProfile",
+            auto_detect_debugger=True,
+        )
+        browser = EdgeBrowser(config, SearchConfig(), sleeper=lambda _: None)
+
+        browser.open()
+        browser.search("topic")
+        browser.browse_results()
+        browser.close()
+
+        delegate = cdp_edge_browser.return_value
+        delegate.open.assert_called_once_with()
+        delegate.search.assert_called_once_with("topic")
+        delegate.browse_results.assert_called_once_with()
+        delegate.close.assert_called_once_with()
+
+    @patch("auto_searcher.browsers.edge_browser.CdpConnection")
+    @patch.object(EdgeBrowser, "_get_debugger_product", return_value=None)
+    @patch(
+        "auto_searcher.browsers.edge_browser.read_edge_endpoint",
+        return_value=EdgeEndpoint(
+            "127.0.0.1:9222",
+            "ws://127.0.0.1:9222/devtools/browser/test",
+        ),
+    )
+    def test_check_detects_edge_151_without_creating_a_tab(
+        self,
+        _read_edge_endpoint,
+        _get_debugger_product,
+        cdp_connection,
+    ) -> None:
+        cdp_connection.return_value.command.return_value = {
+            "product": "Edg/151.0"
+        }
+        config = BrowserConfig(
+            user_data_dir="D:/EdgeProfile",
+            auto_detect_debugger=True,
+        )
+
+        endpoint = EdgeBrowser.detect_cdp_endpoint(config)
+
+        self.assertEqual(endpoint.address, "127.0.0.1:9222")
+        cdp_connection.return_value.command.assert_called_once_with(
+            "Browser.getVersion"
+        )
+
+    @patch("auto_searcher.browsers.edge_browser.CdpEdgeBrowser")
+    @patch("auto_searcher.browsers.edge_browser.subprocess.Popen")
+    @patch.object(EdgeBrowser, "_edge_process_is_running", return_value=False)
+    @patch(
+        "auto_searcher.browsers.edge_browser.read_edge_major_version",
+        return_value=151,
+    )
+    @patch(
+        "auto_searcher.browsers.edge_browser.find_edge_executable",
+        return_value=Path("C:/Program Files/Microsoft/Edge/msedge.exe"),
+    )
+    @patch(
+        "auto_searcher.browsers.edge_browser.default_edge_user_data_dir",
+        return_value=Path("D:/EdgeProfile"),
+    )
+    @patch(
+        "auto_searcher.browsers.edge_browser.read_edge_endpoint",
+        side_effect=[
+            None,
+            EdgeEndpoint(
+                "127.0.0.1:9222",
+                "ws://127.0.0.1:9222/devtools/browser/test",
+            ),
+        ],
+    )
+    def test_edge_151_launches_without_starting_an_edgedriver_session(
+        self,
+        _read_edge_endpoint,
+        _default_user_data_dir,
+        _find_edge_executable,
+        _read_edge_major_version,
+        _edge_process_is_running,
+        popen,
+        cdp_edge_browser,
+    ) -> None:
+        config = BrowserConfig(
+            user_data_dir="D:/EdgeProfile",
+            auto_detect_debugger=True,
+        )
+        browser = EdgeBrowser(config, SearchConfig(), sleeper=lambda _: None)
+
+        browser.open()
+
+        command = popen.call_args.args[0]
+        self.assertNotIn("--remote-debugging-port=0", command)
+        cdp_edge_browser.assert_called_once()
+        self.assertTrue(cdp_edge_browser.call_args.kwargs["owns_browser"])
 
     @patch.object(
         EdgeBrowser,

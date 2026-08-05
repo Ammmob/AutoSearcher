@@ -18,8 +18,8 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 或奖励逻辑。
 
 > [!IMPORTANT]
-> 当前接管已有浏览器依赖 Edge 131 支持的经典 HTTP DevTools 发现接口。
-> Edge 151 的纯 WebSocket 接管已列入开发计划，但尚未实现。
+> Edge 151 WebSocket/CDP 支持目前属于实验功能，仍需在更多机器上验证。
+> 使用普通 Edge 151 用户配置前，请先在 `edge://inspect` 中启用远程调试。
 
 ## ✨ 功能亮点
 
@@ -34,8 +34,9 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 
 ## 🗺️ 开发计划
 
-- [ ] 支持 Edge 151 WebSocket/CDP 会话接管。
-- [ ] 引入与传输方式无关的浏览器会话层。
+- [x] 增加实验性的 Edge 151 WebSocket/CDP 会话接管。
+- [ ] 在更多机器上验证 Edge 151 的接管与启动行为。
+- [ ] 合并 WebDriver 与 CDP 共用的交互节奏逻辑。
 - [ ] 基于稳定的应用接口开发桌面 GUI。
 - [ ] 增加明确的发行版本管理和 GitHub 自动构建。
 
@@ -202,10 +203,15 @@ sources:
 
 | 配置方式 | 行为 |
 | --- | --- |
-| 省略 `debugger_address` | 枚举 `msedge.exe` 当前持有的 TCP 监听端口，通过 `/json/version` 验证并接管第一个有效 Edge 端点。 |
+| 省略 `debugger_address` | 通过实时 HTTP DevTools 监听端口发现 Edge 131，或通过 `DevToolsActivePort` 中记录的浏览器 WebSocket 验证 Edge 151。 |
 | `debugger_address: host:port` | 只尝试配置中的固定地址。 |
 | `debugger_address: null` | 跳过接管并启动新浏览器。 |
 | 没有可接管的 Edge | `9222` 空闲时使用该端口启动，否则让 Edge 自动选择空闲端口。 |
+
+Edge 151 需要先在 `edge://inspect` 中启用一次远程调试。之后 AutoSearcher
+读取浏览器级 WebSocket 地址，通过 CDP 创建独立标签页；接管运行结束时只关闭
+该标签页。如果 Edge 151 尚未运行，AutoSearcher 会启动普通用户配置并等待已
+启用的 WebSocket 服务，而不会创建可能卡住的 EdgeDriver 会话。
 
 接管已有会话时，AutoSearcher 会新建标签页，任务结束后只关闭该标签页。由
 AutoSearcher 启动的浏览器归程序所有，任务结束时会关闭整个浏览器实例。
@@ -230,6 +236,7 @@ AutoSearcher/
 │  ├─ auto_searcher.py     搜索流程协调器
 │  ├─ topic_gather.py      话题聚合与保险切换
 │  ├─ browsers/            浏览器层次与搜索交互
+│  │  └─ cdp/              Edge 151 CDP 通信与搜索交互
 │  ├─ schemas/             配置与搜索数据结构
 │  ├─ sources/             数据源层次与每日缓存
 │  └─ utils/               配置及路径工具

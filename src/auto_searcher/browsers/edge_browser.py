@@ -1,8 +1,11 @@
 import csv
 import logging
 import pkgutil
+import random
 import socket
 import subprocess
+import time
+from collections.abc import Callable
 from io import StringIO
 from pathlib import Path
 
@@ -12,9 +15,19 @@ from selenium.webdriver.edge.service import Service
 from selenium.webdriver.edge.webdriver import WebDriver as EdgeWebDriver
 from selenium.webdriver.remote.webdriver import WebDriver
 
+from auto_searcher.schemas import BrowserConfig, SearchConfig
 from auto_searcher.utils.path_utils import default_edge_user_data_dir
 
 from .base_browser import SearchBrowser
+from .cdp import (
+    CdpConnection,
+    CdpEdgeBrowser,
+    CdpError,
+    EdgeEndpoint,
+    read_edge_endpoint,
+)
+from .edge_runtime import find_edge_executable, read_edge_major_version
+from .search_interaction import SearchInteraction
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +40,184 @@ class EdgeBrowser(SearchBrowser):
         "isDisplayed.js",
     )
 
+    def __init__(
+        self,
+        browser_config: BrowserConfig,
+        search_config: SearchConfig,
+        rng: random.Random | None = None,
+        sleeper: Callable[[float], None] = time.sleep,
+        interaction: SearchInteraction | None = None,
+    ) -> None:
+        super().__init__(
+            browser_config,
+            search_config,
+            rng,
+            sleeper,
+            interaction,
+        )
+        self._cdp_browser: CdpEdgeBrowser | None = None
+        self._sleep = sleeper
+
     def open(self) -> None:
         self.validate_runtime()
         logger.info("使用浏览器: Edge")
+        if self._open_cdp_if_available():
+            return
+        if self._launch_cdp_for_modern_edge():
+            return
         super().open()
+
+    def search(self, keyword: str) -> None:
+        if self._cdp_browser is not None:
+            self._cdp_browser.search(keyword)
+            return
+        super().search(keyword)
+
+    def browse_results(self) -> None:
+        if self._cdp_browser is not None:
+            self._cdp_browser.browse_results()
+            return
+        super().browse_results()
+
+    def close(self) -> None:
+        if self._cdp_browser is not None:
+            try:
+                self._cdp_browser.close()
+            finally:
+                self._cdp_browser = None
+            return
+        super().close()
+
+    def _open_cdp_if_available(self) -> bool:
+        user_data_dir = self._browser_config.user_data_dir
+        configured_address = self._browser_config.debugger_address
+        should_attach = self._browser_config.auto_detect_debugger or bool(
+            configured_address
+        )
+        if not should_attach or not user_data_dir:
+            return False
+        endpoint = read_edge_endpoint(user_data_dir, configured_address)
+        if endpoint is None:
+            return False
+        if self._get_debugger_product(endpoint.address):
+            return False
+
+        cdp_browser = CdpEdgeBrowser(
+            endpoint,
+            self._browser_config,
+            self._search_config,
+        )
+        try:
+            cdp_browser.open()
+        except CdpError as exc:
+            logger.info("CDP WebSocket 接管失败: %s", exc)
+            return False
+        self._cdp_browser = cdp_browser
+        return True
+
+    @classmethod
+    def detect_cdp_endpoint(
+        cls,
+        browser_config: BrowserConfig,
+    ) -> EdgeEndpoint | None:
+        configured_address = browser_config.debugger_address
+        should_attach = browser_config.auto_detect_debugger or bool(
+            configured_address
+        )
+        if not should_attach or not browser_config.user_data_dir:
+            return None
+        endpoint = read_edge_endpoint(
+            browser_config.user_data_dir,
+            configured_address,
+        )
+        if endpoint is None or cls._get_debugger_product(endpoint.address):
+            return None
+
+        connection = CdpConnection(
+            endpoint.websocket_url,
+            browser_config.page_timeout_seconds,
+        )
+        try:
+            connection.open()
+            version = connection.command("Browser.getVersion")
+        except CdpError:
+            return None
+        finally:
+            connection.close()
+        product = version.get("product")
+        if isinstance(product, str) and product.startswith("Edg/"):
+            return endpoint
+        return None
+
+    def _launch_cdp_for_modern_edge(self) -> bool:
+        executable = find_edge_executable()
+        major_version = (
+            read_edge_major_version(executable) if executable is not None else None
+        )
+        if major_version is None or major_version < 151:
+            return False
+        if self._edge_process_is_running():
+            raise RuntimeError(
+                "Edge 151 正在运行，但没有发现可用的 CDP WebSocket。"
+                "请在 edge://inspect 中启用远程调试后重试。"
+            )
+
+        command = [
+            str(executable),
+            f"--profile-directory={self._browser_config.profile_name}",
+        ]
+        user_data_dir = self._browser_config.user_data_dir
+        if user_data_dir:
+            try:
+                uses_default_directory = (
+                    Path(user_data_dir).resolve() == default_edge_user_data_dir()
+                )
+            except OSError:
+                uses_default_directory = True
+            if not uses_default_directory:
+                command.extend(
+                    [
+                        f"--user-data-dir={user_data_dir}",
+                        "--remote-debugging-port=0",
+                    ]
+                )
+
+        logger.info("启动 Edge 151，等待 CDP WebSocket")
+        try:
+            subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except OSError as exc:
+            raise RuntimeError(f"无法启动 Edge 151: {exc}") from exc
+
+        deadline = time.monotonic() + min(
+            self._browser_config.page_timeout_seconds,
+            10,
+        )
+        while time.monotonic() < deadline:
+            endpoint = read_edge_endpoint(user_data_dir or default_edge_user_data_dir())
+            if endpoint is not None:
+                cdp_browser = CdpEdgeBrowser(
+                    endpoint,
+                    self._browser_config,
+                    self._search_config,
+                    owns_browser=True,
+                )
+                try:
+                    cdp_browser.open()
+                except CdpError:
+                    cdp_browser.close()
+                else:
+                    self._cdp_browser = cdp_browser
+                    return True
+            self._sleep(0.2)
+        raise RuntimeError(
+            "Edge 151 已启动，但没有开放 CDP WebSocket。"
+            "请打开 edge://inspect，启用远程调试后重新运行。"
+        )
 
     @classmethod
     def validate_runtime(cls) -> None:
