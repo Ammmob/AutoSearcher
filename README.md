@@ -170,7 +170,7 @@ sources:
 | `type` | Browser implementation. Only `edge` is currently available. |
 | `user_data_dir` | Optional `--user-data-dir` launch argument. When omitted, the default Edge directory is still used for endpoint discovery. |
 | `profile_name` | Optional `--profile-directory` launch argument such as `Default` or `Profile 1`. |
-| `debugger_address` | Explicit address such as `127.0.0.1:9222`. Omit it for live discovery, or set it to `null` to skip attachment. |
+| `debugger_address` | Explicit address such as `127.0.0.1:9222`; its port is also passed when starting Edge. Omit it for live discovery and parameter-free remote debugging. |
 | `page_timeout_seconds` | Page navigation and element wait timeout. |
 
 ### Search
@@ -216,10 +216,9 @@ line; blank lines and lines beginning with `#` are ignored.
 | `debugger_address: null` | Skip attachment and start a new browser. |
 | No attachable Edge found | Start Edge and wait for its `DevToolsActivePort`. |
 
-AutoSearcher never adds a remote-debugging port when it starts Edge. It passes
-`--profile-directory` and `--user-data-dir` only when their corresponding values
-were explicitly written in YAML; omitted values are not passed.
-Remote debugging must already be enabled in the browser.
+AutoSearcher passes `--profile-directory`, `--user-data-dir`, and the port from
+`debugger_address` only when their corresponding values were explicitly written
+in YAML. Omitted values are not passed.
 
 For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
 then reads the browser-level WebSocket path, opens a dedicated tab through CDP,

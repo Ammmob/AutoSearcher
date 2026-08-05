@@ -129,7 +129,10 @@ class EdgeBrowserTests(unittest.TestCase):
         self.assertEqual(implicit_endpoint.address, "127.0.0.1:9222")
         self.assertEqual(
             popen.call_args.args[0],
-            [str(Path("C:/Program Files/Microsoft/Edge/msedge.exe"))],
+            [
+                str(Path("C:/Program Files/Microsoft/Edge/msedge.exe")),
+                "--remote-debugging-port=9222",
+            ],
         )
 
         explicit_browser = EdgeBrowser(
@@ -153,6 +156,15 @@ class EdgeBrowserTests(unittest.TestCase):
             ],
         )
         self.assertEqual(_read_file_endpoint.call_count, 2)
+
+    def test_edge_launch_command_omits_all_unconfigured_arguments(self) -> None:
+        browser = EdgeBrowser(BrowserConfig(), SearchConfig())
+        executable = Path("C:/Program Files/Microsoft/Edge/msedge.exe")
+
+        command, expected_address = browser._launch_command(executable)
+
+        self.assertEqual(command, [str(executable)])
+        self.assertIsNone(expected_address)
 
 if __name__ == "__main__":
     unittest.main()

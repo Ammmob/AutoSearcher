@@ -20,6 +20,26 @@ class EdgeBrowser(ChromiumBrowser):
     def _name(cls) -> str:
         return "Edge"
 
+    def _launch_command(self, executable: Path) -> tuple[list[str], str | None]:
+        command = [str(executable)]
+        if self._browser_config.profile_name:
+            command.append(
+                f"--profile-directory={self._browser_config.profile_name}"
+            )
+        if self._browser_config.user_data_dir:
+            command.append(f"--user-data-dir={self._browser_config.user_data_dir}")
+
+        debugger_address = self._browser_config.debugger_address
+        if debugger_address:
+            try:
+                port = int(debugger_address.rsplit(":", maxsplit=1)[-1])
+            except ValueError as exc:
+                raise RuntimeError("远程调试地址端口无效") from exc
+            if not 1 <= port <= 65535:
+                raise RuntimeError("远程调试地址端口无效")
+            command.append(f"--remote-debugging-port={port}")
+        return command, debugger_address
+
     @staticmethod
     def _find_executable() -> Path | None:
         roots = (

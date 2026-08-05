@@ -137,14 +137,7 @@ class ChromiumBrowser(Browser):
                 f"请完全退出 {self.name}，或启用远程调试后重试。"
             )
 
-        user_data_dir = self._browser_config.user_data_dir
-        command = [str(executable)]
-        if self._browser_config.profile_name:
-            command.append(
-                f"--profile-directory={self._browser_config.profile_name}"
-            )
-        if user_data_dir:
-            command.append(f"--user-data-dir={user_data_dir}")
+        command, expected_address = self._launch_command(executable)
         logger.info("启动 %s，等待浏览器开放 CDP WebSocket", self.name)
         logger.debug("浏览器启动参数: %s", subprocess.list2cmdline(command))
 
@@ -162,9 +155,13 @@ class ChromiumBrowser(Browser):
             self._browser_config.page_timeout_seconds,
             10,
         )
-        endpoint_dir = user_data_dir or self._default_user_data_dir()
+        endpoint_dir = (
+            self._browser_config.user_data_dir or self._default_user_data_dir()
+        )
         while time.monotonic() < deadline:
-            endpoint = read_active_endpoint(endpoint_dir)
+            endpoint = read_active_endpoint(endpoint_dir, expected_address)
+            if endpoint is None and expected_address:
+                endpoint = read_http_endpoint(expected_address)
             if endpoint is not None and self._is_supported_endpoint(
                 endpoint,
                 self._browser_config.page_timeout_seconds,
@@ -175,6 +172,10 @@ class ChromiumBrowser(Browser):
             f"{self.name} 已启动，但没有开放可用的 CDP WebSocket。"
             f"{self._remote_debugging_hint()}"
         )
+
+    @abstractmethod
+    def _launch_command(self, executable: Path) -> tuple[list[str], str | None]:
+        raise NotImplementedError
 
     @classmethod
     @abstractmethod

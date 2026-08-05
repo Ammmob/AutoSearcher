@@ -167,7 +167,7 @@ sources:
 | `type` | 浏览器实现，目前仅支持 `edge`。 |
 | `user_data_dir` | 可选的 `--user-data-dir` 启动参数；省略后仍使用 Edge 默认目录发现端点。 |
 | `profile_name` | 可选的 `--profile-directory` 启动参数，例如 `Default` 或 `Profile 1`。 |
-| `debugger_address` | `127.0.0.1:9222` 等明确地址；省略时实时发现，设为 `null` 时跳过接管。 |
+| `debugger_address` | `127.0.0.1:9222` 等明确地址；启动 Edge 时也会传入其中的端口。省略时实时发现并使用无端口参数的调试方式。 |
 | `page_timeout_seconds` | 页面跳转与元素等待超时。 |
 
 ### 搜索
@@ -211,9 +211,8 @@ sources:
 | `debugger_address: null` | 跳过接管并启动新浏览器。 |
 | 没有可接管的 Edge | 启动 Edge，并等待其生成 `DevToolsActivePort`。 |
 
-AutoSearcher 启动 Edge 时不会添加远程调试端口。只有在 YAML 中明确填写对应值时，
-才会传入 `--profile-directory` 和 `--user-data-dir`；省略的值不会作为启动参数。
-远程调试必须事先在浏览器中启用。
+只有在 YAML 中明确填写对应值时，AutoSearcher 才会传入 `--profile-directory`、
+`--user-data-dir` 和 `debugger_address` 中的端口；省略的值不会作为启动参数。
 
 Edge 151 需要先在 `edge://inspect` 中启用一次远程调试。之后 AutoSearcher
 读取浏览器级 WebSocket 地址，通过 CDP 创建独立标签页；接管运行结束时只关闭
