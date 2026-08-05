@@ -249,7 +249,9 @@ AutoSearcher/
 │  ├─ __main__.py          CLI and dependency assembly
 │  ├─ auto_searcher.py     Search workflow coordinator
 │  ├─ topic_gather.py      Topic aggregation and fallback
-│  ├─ browsers/            Browser, backend, and interaction layers
+│  ├─ browsers/            Browser implementations
+│  │  ├─ browser.py        Browser interfaces and shared Chromium flow
+│  │  ├─ edge_browser.py   Edge implementation and runtime helpers
 │  │  └─ cdp/              Low-level CDP connection, endpoint, and page
 │  ├─ schemas/             Configuration and search structures
 │  ├─ sources/             Source hierarchy and daily cache

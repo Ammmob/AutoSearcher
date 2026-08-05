@@ -241,7 +241,9 @@ AutoSearcher/
 │  ├─ __main__.py          命令行入口与依赖组装
 │  ├─ auto_searcher.py     搜索流程协调器
 │  ├─ topic_gather.py      话题聚合与保险切换
-│  ├─ browsers/            浏览器、控制后端与搜索交互层
+│  ├─ browsers/            浏览器实现
+│  │  ├─ browser.py        浏览器接口与 Chromium 通用流程
+│  │  ├─ edge_browser.py   Edge 实现及运行环境辅助函数
 │  │  └─ cdp/              CDP 连接、端点与页面底层
 │  ├─ schemas/             配置与搜索数据结构
 │  ├─ sources/             数据源层次与每日缓存

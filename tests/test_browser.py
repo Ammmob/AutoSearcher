@@ -63,7 +63,7 @@ class EdgeBrowserTests(unittest.TestCase):
         ),
     )
     @patch(
-        "auto_searcher.browsers.browser.listening_edge_addresses",
+        "auto_searcher.browsers.edge_browser.listening_edge_addresses",
         return_value=("127.0.0.1:9224",),
     )
     @patch(
@@ -88,10 +88,13 @@ class EdgeBrowserTests(unittest.TestCase):
 
     @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch("auto_searcher.browsers.browser.subprocess.Popen")
-    @patch("auto_searcher.browsers.browser.edge_process_is_running", return_value=False)
+    @patch(
+        "auto_searcher.browsers.edge_browser.edge_process_is_running",
+        return_value=False,
+    )
     @patch("auto_searcher.browsers.browser.port_is_available", return_value=True)
     @patch(
-        "auto_searcher.browsers.browser.find_edge_executable",
+        "auto_searcher.browsers.edge_browser.find_edge_executable",
         return_value=Path("C:/Program Files/Microsoft/Edge/msedge.exe"),
     )
     @patch(
@@ -129,9 +132,12 @@ class EdgeBrowserTests(unittest.TestCase):
         self.assertIn("--remote-debugging-port=9222", command)
 
     @patch("auto_searcher.browsers.browser.port_is_available", return_value=False)
-    @patch("auto_searcher.browsers.browser.edge_process_is_running", return_value=False)
     @patch(
-        "auto_searcher.browsers.browser.find_edge_executable",
+        "auto_searcher.browsers.edge_browser.edge_process_is_running",
+        return_value=False,
+    )
+    @patch(
+        "auto_searcher.browsers.edge_browser.find_edge_executable",
         return_value=Path("C:/Program Files/Microsoft/Edge/msedge.exe"),
     )
     @patch("auto_searcher.browsers.browser.subprocess.Popen")

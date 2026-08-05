@@ -1,4 +1,4 @@
-"""High-level browser abstractions and Edge implementation."""
+"""High-level browser abstractions and shared Chromium implementation."""
 
 import logging
 import random
@@ -10,8 +10,6 @@ from pathlib import Path
 from types import TracebackType
 
 from auto_searcher.schemas import BrowserConfig, SearchConfig
-from auto_searcher.utils.path_utils import default_edge_user_data_dir
-
 from .cdp import (
     CdpConnection,
     CdpError,
@@ -20,11 +18,6 @@ from .cdp import (
     port_is_available,
     read_active_endpoint,
     read_http_endpoint,
-)
-from .edge_runtime import (
-    edge_process_is_running,
-    find_edge_executable,
-    listening_edge_addresses,
 )
 
 logger = logging.getLogger(__name__)
@@ -264,37 +257,3 @@ class ChromiumBrowser(Browser):
     @abstractmethod
     def _remote_debugging_hint() -> str:
         raise NotImplementedError
-
-
-class EdgeBrowser(ChromiumBrowser):
-    @property
-    def name(self) -> str:
-        return self._name()
-
-    @classmethod
-    def _name(cls) -> str:
-        return "Edge"
-
-    @staticmethod
-    def _find_executable() -> Path | None:
-        return find_edge_executable()
-
-    @staticmethod
-    def _process_is_running() -> bool:
-        return edge_process_is_running()
-
-    @staticmethod
-    def _listening_addresses() -> tuple[str, ...]:
-        return listening_edge_addresses()
-
-    @staticmethod
-    def _default_user_data_dir() -> Path:
-        return default_edge_user_data_dir()
-
-    @staticmethod
-    def _supports_product(product: str) -> bool:
-        return product.startswith("Edg/")
-
-    @staticmethod
-    def _remote_debugging_hint() -> str:
-        return "Edge 151 请在 edge://inspect 中启用远程调试。"

@@ -1,10 +1,14 @@
-"""Locate Microsoft Edge and inspect its local runtime state."""
+"""Microsoft Edge browser implementation and runtime helpers."""
 
 import csv
 import os
 import subprocess
 from io import StringIO
 from pathlib import Path
+
+from auto_searcher.utils.path_utils import default_edge_user_data_dir
+
+from .browser import ChromiumBrowser
 
 
 def find_edge_executable() -> Path | None:
@@ -75,3 +79,37 @@ def listening_edge_addresses() -> tuple[str, ...]:
         if 1 <= port <= 65535:
             ports.add(port)
     return tuple(f"127.0.0.1:{port}" for port in sorted(ports))
+
+
+class EdgeBrowser(ChromiumBrowser):
+    @property
+    def name(self) -> str:
+        return self._name()
+
+    @classmethod
+    def _name(cls) -> str:
+        return "Edge"
+
+    @staticmethod
+    def _find_executable() -> Path | None:
+        return find_edge_executable()
+
+    @staticmethod
+    def _process_is_running() -> bool:
+        return edge_process_is_running()
+
+    @staticmethod
+    def _listening_addresses() -> tuple[str, ...]:
+        return listening_edge_addresses()
+
+    @staticmethod
+    def _default_user_data_dir() -> Path:
+        return default_edge_user_data_dir()
+
+    @staticmethod
+    def _supports_product(product: str) -> bool:
+        return product.startswith("Edg/")
+
+    @staticmethod
+    def _remote_debugging_hint() -> str:
+        return "Edge 151 请在 edge://inspect 中启用远程调试。"
