@@ -1,122 +1,134 @@
+<div align="center">
+
 # AutoSearcher
 
-AutoSearcher 是一个面向 Windows 和 Microsoft Edge 的可扩展网页自动搜索工具。它从多个热点数据源收集话题，完成去重和每日缓存，然后以接近普通用户的输入、停留与滚动节奏逐条执行网页搜索。
+Extensible, human-paced web search automation for Windows and Microsoft Edge.
 
-项目只负责“话题获取 → 浏览器搜索 → 结果页浏览”，不包含账号、积分或登录逻辑。
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows)
+![Browser](https://img.shields.io/badge/Browser-Microsoft%20Edge-0A66C2?logo=microsoftedge)
+![Version](https://img.shields.io/badge/Version-0.1.0-4C8BF5)
 
-## 功能特性
+**English** · [简体中文](README.zh-CN.md)
 
-- 聚合百度、腾讯和头条热点数据源
-- 每个数据源独立容错，一个来源失败不会中断其他来源
-- 当日首次成功获取后写入本地缓存，后续启动直接复用
-- 所有在线来源均无结果时，自动使用本地保险话题
-- 支持启动新的 Edge，或接管开启了远程调试的 Edge
-- 使用已有 Edge 用户目录，保留登录状态和用户环境
-- 模拟鼠标定位、逐字输入、随机停留和分段滚动
-- 支持配置检查、单独调试数据源和完整搜索三种命令
-- 提供无需安装 Python 的 Windows 便携 ZIP 构建
+</div>
 
-## 运行环境
+AutoSearcher gathers trending topics from multiple sources, removes duplicates,
+caches daily results, and searches them one by one in Microsoft Edge. Browser
+interactions use paced typing, short dwell times, pointer movement, and segmented
+scrolling to reproduce an ordinary interactive workflow.
 
-### 使用便携版
+The project only covers **topic collection → browser search → result browsing**.
+It contains no account, sign-in, reward, or points logic.
 
-- Windows 10/11 x64
-- Microsoft Edge
+> [!IMPORTANT]
+> Existing-browser attachment currently targets the classic HTTP DevTools
+> discovery interface available in Edge 131. Edge 151 WebSocket-only attachment
+> is planned but not implemented yet.
 
-目标机器不需要安装 Python 或项目依赖。首次缺少匹配的 EdgeDriver 时，Selenium Manager 可能需要联网下载。
+## ✨ Highlights
 
-### 从源码运行
+- Aggregates Baidu, Tencent, and Toutiao trending topics.
+- Isolates source failures so one unavailable provider does not stop the others.
+- Stores an independent daily cache for each online source.
+- Uses a local fallback topic file only when every online source returns no data.
+- Starts a new Edge session or attaches to a running debuggable Edge instance.
+- Resolves the current Windows Edge user-data directory and last-used profile.
+- Encapsulates browser interaction, source access, caching, and orchestration.
+- Ships as a portable Windows ZIP that does not require Python on the target PC.
 
-- Python 3.11 或更高版本
-- Microsoft Edge
+## 🧭 How It Works
 
-## 快速开始
-
-### 便携版
-
-解压 `AutoSearcher-portable-win-x64.zip` 后，目录中包含程序、配置和保险话题数据：
-
-```text
-AutoSearcher/
-├─ AutoSearcher.exe
-├─ run.cmd
-├─ check.cmd
-├─ config/
-│  └─ config.yaml
-└─ data/
-   └─ fallback_topics.txt
+```mermaid
+flowchart LR
+    Sources[Online Sources] --> Cache[Daily Cache]
+    Cache --> Gather[TopicGather]
+    Fallback[Fallback Topics] -. all sources fail .-> Gather
+    Gather --> Runner[AutoSearcher]
+    Runner --> Browser[Browser Interface]
+    Browser --> Edge[EdgeBrowser]
+    Edge --> Search[Search and Browse]
 ```
 
-建议先运行：
+The main dependencies point inward toward small interfaces:
+
+- `AutoSearcher` coordinates the run through the `Browser` contract.
+- `TopicGather` owns source fallback, aggregation, shuffling, and deduplication.
+- `Source`, `HttpSource`, and `CachedSource` separate provider behavior from cache behavior.
+- `SearchInteraction` contains WebDriver-specific typing and scrolling actions.
+- `schemas` contains configuration and search data structures only.
+
+## 🚀 Quick Start
+
+### Portable package
+
+Requirements:
+
+- Windows 10 or 11 x64
+- Microsoft Edge
+
+Extract `AutoSearcher-portable-win-x64.zip`, then run:
 
 ```powershell
 .\check.cmd
-```
-
-确认配置有效后运行：
-
-```powershell
 .\run.cmd
 ```
 
-也可以直接执行 `AutoSearcher.exe`。未提供命令时默认执行 `run`。
+The target machine does not need Python or project dependencies. If a matching
+EdgeDriver is not already cached, Selenium Manager may need network access on the
+first run.
 
-### 源码安装
-
-克隆或下载源码后，在项目目录执行：
+### Run from source
 
 ```powershell
+git clone <repository-url>
 cd AutoSearcher
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e .
 auto-searcher check
+auto-searcher
 ```
 
-项目使用标准的 `src` 布局。开发环境应先执行可编辑安装，不依赖项目根目录偶然出现在 Python 模块搜索路径中。
+Python 3.11 or newer is required. The project uses a standard `src` layout, so an
+editable install is recommended for development.
 
-## 命令行
+## 🖥️ Commands
 
 ```text
-auto-searcher [选项] [{run,check,topics}]
+auto-searcher [options] [{run,check,topics}]
 ```
 
-| 命令 | 作用 |
+| Command | Purpose |
 | --- | --- |
-| `run` | 获取话题并执行完整搜索；这是默认命令 |
-| `check` | 检查配置和 Selenium 运行资源，并显示解析后的目录 |
-| `topics` | 只获取并显示话题，不启动浏览器 |
+| `run` | Collect topics and perform the complete search workflow; this is the default. |
+| `check` | Validate configuration and packaged Selenium resources, then show resolved paths. |
+| `topics` | Collect and print topics without opening Edge. |
 
-常用选项：
-
-| 选项 | 作用 |
-| --- | --- |
-| `--config PATH` | 指定 YAML 配置文件 |
-| `--verbose` | 输出调试日志 |
-| `--source NAME` | `topics` 命令只调试一个数据源 |
-| `--limit N` | 限制 `topics` 显示的条数，默认 20 |
-
-示例：
+Common examples:
 
 ```powershell
-# 使用默认配置执行搜索
+# Run with the default configuration
 auto-searcher
 
-# 检查指定配置
+# Validate a specific configuration
 auto-searcher --config config/config.yaml check
 
-# 查看聚合后的话题
+# Print up to 20 aggregated topics
 auto-searcher topics --limit 20
 
-# 绕过缓存，单独调试百度数据源
+# Debug one source without cache or fallback data
 auto-searcher topics --source baidu --limit 10
+
+# Enable diagnostic logging
+auto-searcher --verbose
 ```
 
-可用数据源名称为 `baidu`、`tencent` 和 `toutiao`。
+Available source names are `baidu`, `tencent`, and `toutiao`.
 
-## 配置
+## ⚙️ Configuration
 
-默认配置位于 `config/config.yaml`：
+The default configuration is [config/config.yaml](config/config.yaml):
 
 ```yaml
 browser:
@@ -140,89 +152,67 @@ sources:
   fallback_file: ../data/fallback_topics.txt
 ```
 
-### 浏览器配置
+### Browser
 
-| 字段 | 说明 |
+| Field | Description |
 | --- | --- |
-| `type` | 浏览器类型，目前仅支持 `edge` |
-| `user_data_dir` | Edge 用户数据目录；省略时自动使用当前用户的默认目录 |
-| `profile_name` | 可选；省略时自动读取最近使用的 Edge 配置，也可指定 `Default` 或 `Profile 1` |
-| `debugger_address` | 可选；省略时自动发现 Edge 当前调试端口，设为 `null` 时跳过接管，也可显式指定地址 |
-| `page_timeout_seconds` | 页面加载和元素等待超时 |
+| `type` | Browser implementation. Only `edge` is currently available. |
+| `user_data_dir` | Edge user-data root. Omit it to use `%LOCALAPPDATA%\Microsoft\Edge\User Data`. |
+| `profile_name` | Profile directory such as `Default` or `Profile 1`. Omit it to read Edge's last-used profile. |
+| `debugger_address` | Explicit address such as `127.0.0.1:9222`. Omit it for live discovery, or set it to `null` to skip attachment. |
+| `page_timeout_seconds` | Page navigation and element wait timeout. |
 
-省略 `user_data_dir` 时自动解析为：
+When `profile_name` is omitted, AutoSearcher reads `Local State` from the selected
+user-data root and falls back to `Default` if no valid last-used profile is found.
 
-```text
-%LOCALAPPDATA%\Microsoft\Edge\User Data
-```
+### Search
 
-省略 `profile_name` 时，程序读取用户数据目录下的 `Local State`，使用
-Edge 最近使用的配置文件；无法读取时回退到 `Default`。显式填写配置名称
-会覆盖自动识别结果。
-
-路径字段支持绝对路径、环境变量，以及相对于配置文件所在目录的路径。
-
-### 搜索配置
-
-| 字段 | 说明 |
+| Field | Description |
 | --- | --- |
-| `url` | 搜索引擎首页地址 |
-| `count` | 本次执行的搜索次数 |
-| `interval_seconds` | 两次搜索之间的随机等待范围 |
-| `typing_delay_seconds` | 每次键盘输入之间的随机延迟范围 |
-| `scroll_count` | 结果页分段滚动次数范围 |
-| `scroll_pause_seconds` | 每次滚动后的随机停留范围 |
+| `url` | Search engine home page. |
+| `count` | Number of searches in one run. |
+| `interval_seconds` | Random delay range between searches. |
+| `typing_delay_seconds` | Delay range between individual keystrokes. |
+| `scroll_count` | Range of segmented result-page scrolls. |
+| `scroll_pause_seconds` | Pause range after each scroll. |
 
-当前搜索交互通过语义属性 `name="q"` 定位搜索框，并根据 `/search` 判断结果页。更换搜索引擎时可能需要实现对应的页面适配。
+The current page adapter locates the query input by `name="q"` and identifies
+results through the `/search` URL. Other search engines may require a dedicated
+page adapter.
 
-### 数据源配置
+### Sources
 
-| 字段 | 说明 |
+| Field | Description |
 | --- | --- |
-| `enabled` | 启用的数据源列表及执行顺序 |
-| `request_timeout_seconds` | 单个数据源的 HTTP 请求超时 |
-| `cache_dir` | 可选的缓存目录；省略时使用系统默认目录 |
-| `fallback_file` | 所有在线来源无结果时使用的本地话题文件 |
+| `enabled` | Enabled source names in collection order. |
+| `request_timeout_seconds` | Timeout for each source request. |
+| `cache_dir` | Optional cache directory. |
+| `fallback_file` | Local topics used only when all online sources return no data. |
 
-默认缓存位置：
+The default cache path is:
 
 ```text
 %LOCALAPPDATA%\AutoSearcher\cache\sources\<source>.json
 ```
 
-缓存按数据源分别保存，并且只在生成当天有效。缓存不存在、日期过期、内容损坏或上次获取为空时，会重新请求对应数据源。`topics --source ...` 用于实时调试，因此会绕过缓存和保险话题。
+Each source cache is valid only for the day it was created. Missing, expired,
+empty, or damaged caches are fetched again. The fallback file uses one topic per
+line; blank lines and lines beginning with `#` are ignored.
 
-保险文件采用一行一个话题的纯文本格式，空行和以 `#` 开头的注释会被忽略。只要任意在线来源返回有效结果，本次运行就不会混入保险话题。
+## 🌐 Edge Sessions
 
-## Edge 会话模式
+| Configuration | Behavior |
+| --- | --- |
+| `debugger_address` omitted | Enumerate live TCP listeners owned by `msedge.exe`, validate them through `/json/version`, and attach to the first valid Edge endpoint. |
+| `debugger_address: host:port` | Try only the configured endpoint. |
+| `debugger_address: null` | Skip attachment and start a new browser. |
+| No attachable Edge found | Start Edge on port `9222` when available; otherwise let Edge choose a free port. |
 
-### 启动新浏览器
+An attached session receives a new tab, and AutoSearcher closes only that tab at
+the end. A browser started by AutoSearcher is owned by the program and is closed
+when the run finishes.
 
-没有检测到可接管的浏览器时，程序使用配置的用户目录和配置文件启动
-Edge。端口 `9222` 空闲时优先使用该端口；如果已被占用，则通过
-`--remote-debugging-port=0` 让 Edge 选择其他空闲端口。程序
-拥有该浏览器实例，并会在任务结束时将其关闭。
-
-需要跳过自动检测、始终启动新浏览器时，可以明确配置：
-
-```yaml
-browser:
-  debugger_address: null
-```
-
-同一个 Edge 用户数据目录不能同时被两个浏览器进程占用。使用默认用户目录时，请先关闭正在运行的普通 Edge，否则新实例可能无法启动。
-
-### 接管现有浏览器
-
-省略 `debugger_address` 时，程序检查当前由 `msedge.exe` 持有的 TCP 监听端口，
-并通过 `/json/version` 确认真正的 Edge 调试服务，不会预先猜测固定端口。
-也可以显式配置固定地址。
-
-- 找到 Edge：接管现有会话，新建一个标签页执行搜索，结束时只关闭该标签页。
-- 未找到 Edge：使用配置的用户目录启动新 Edge；自动模式优先使用 `9222`，被占用时随机选择空闲端口，显式配置模式使用指定端口。
-- 地址对应其他浏览器：停止运行并报告类型不匹配。
-
-普通方式打开的 Edge 没有远程调试端口，不能在运行后直接接管。需要接管时，应在启动 Edge 时显式启用远程调试，例如：
+To expose a classic debugging endpoint manually:
 
 ```powershell
 & "$env:ProgramFiles(x86)\Microsoft\Edge\Application\msedge.exe" `
@@ -230,129 +220,75 @@ browser:
   --user-data-dir="D:\Temp\EdgeDebugProfile"
 ```
 
-然后配置：
+The same Edge user-data root cannot be opened by two browser processes at once.
+If no attachable endpoint exists, close all Edge background processes before
+asking AutoSearcher to launch the default user profile.
 
-```yaml
-browser:
-  user_data_dir: D:\Temp\EdgeDebugProfile
-  debugger_address: 127.0.0.1:9222
-```
-
-显式配置的 `debugger_address` 是程序启动时优先尝试的接管地址。该地址没有
-浏览器时，程序会启动由 EdgeDriver 管理的新实例，并继续使用配置的固定端口。
-
-当前自动接管仍使用 Edge 131 支持的传统 HTTP 调试接口；Edge 151 的新版
-WebSocket 接管不在本次实现范围内。
-
-## 项目结构
+## 🧩 Project Layout
 
 ```text
 AutoSearcher/
-├─ src/
-│  └─ auto_searcher/
-│     ├─ __main__.py          命令行入口和对象组装
-│     ├─ auto_searcher.py     搜索流程协调器
-│     ├─ topic_gather.py      话题聚合、容错和去重
-│     ├─ browsers/            浏览器抽象、Edge 实现和搜索交互
-│     ├─ schemas/             配置与搜索数据结构
-│     ├─ sources/             数据源抽象、缓存装饰器和平台实现
-│     └─ utils/               配置读取与路径解析
-├─ tests/                     单元测试
-├─ config/                    默认配置
-├─ data/                      保险话题
-├─ packaging/                 PyInstaller 配置和便携版文件
-├─ scripts/                   构建脚本
-└─ pyproject.toml             项目与依赖配置
+├─ src/auto_searcher/
+│  ├─ __main__.py          CLI and dependency assembly
+│  ├─ auto_searcher.py     Search workflow coordinator
+│  ├─ topic_gather.py      Topic aggregation and fallback
+│  ├─ browsers/            Browser hierarchy and interactions
+│  ├─ schemas/             Configuration and search structures
+│  ├─ sources/             Source hierarchy and daily cache
+│  └─ utils/               Configuration and path helpers
+├─ tests/                  Unit tests
+├─ config/                 Default configuration
+├─ data/                   Fallback topics
+├─ packaging/              PyInstaller specification and launchers
+├─ scripts/                Build implementation
+├─ build.cmd               One-click portable build
+└─ pyproject.toml          Package metadata and dependencies
 ```
 
-核心依赖方向：
+### Add a source
 
-```text
-CLI
- ├─ TopicGather ── Source ── CachedSource
- └─ AutoSearcher ── Browser ── SearchBrowser ── EdgeBrowser
-```
+For a JSON HTTP API, subclass `HttpSource` and implement `name`, `url`, and
+`parse()`. Then export the class from `sources`, register it in the CLI source
+map, add its name to `sources.enabled`, and cover the parser with an offline unit
+test. Non-HTTP sources can implement `Source.fetch()` directly.
 
-- `AutoSearcher` 只协调搜索流程，通过 `Browser` 接口使用浏览器。
-- `TopicGather` 只负责聚合、容错、去重和保险话题切换。
-- `Source`、`HttpSource` 和 `CachedSource` 分别承担来源协议、HTTP 模板流程和缓存能力。
-- `SearchInteraction` 封装页面输入与浏览动作，可脱离真实浏览器进行测试。
-- `schemas` 只保存数据结构，不包含业务流程。
+## 🛠️ Development
 
-## 扩展数据源
-
-JSON HTTP 数据源可以继承 `HttpSource`，只实现来源名称、接口地址和响应解析：
-
-```python
-from collections.abc import Sequence
-from typing import Any
-
-from auto_searcher.sources import HttpSource
-
-
-class ExampleSource(HttpSource):
-    url = "https://example.com/api/topics"
-
-    @property
-    def name(self) -> str:
-        return "example"
-
-    def parse(self, data: Any) -> Sequence[str]:
-        return [item["title"] for item in data["items"]]
-```
-
-随后需要：
-
-1. 在 `sources/__init__.py` 导出新类。
-2. 在 `__main__.py` 的数据源构造映射中注册名称。
-3. 将名称加入 `config.yaml` 的 `sources.enabled`。
-4. 为解析逻辑增加不访问网络的单元测试。
-
-非 HTTP 或非 JSON 来源可以直接实现 `Source.fetch()`。
-
-## 测试
-
-安装开发版本后运行：
+Run the complete offline test suite:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-测试使用假的浏览器和内存数据源，不会打开 Edge，也不会访问外部热点接口。
+Tests use fake browsers and in-memory sources. They do not open Edge or call the
+live trending-topic APIs.
 
-## 构建便携 ZIP
-
-在 Windows x64 环境双击项目根目录下的 `build.cmd`，或者在终端运行：
+Build the portable package by double-clicking `build.cmd` or running:
 
 ```bat
 build.cmd
 ```
 
-需要直接调用底层 PowerShell 脚本时使用：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass `
-  -File .\scripts\build_portable.ps1
-```
-
-构建脚本会：
-
-1. 创建或复用隔离的 `.build-venv`。
-2. 安装构建依赖并以 `src` 布局安装项目。
-3. 使用 PyInstaller 生成 `onedir` 程序。
-4. 复制默认配置、保险话题、命令脚本和 README。
-5. 运行打包后的 `check` 命令验证运行资源。
-6. 生成便携压缩包。
-
-输出文件：
+The output is written to:
 
 ```text
 dist\AutoSearcher-portable-win-x64.zip
 ```
 
-## 注意事项
+The build creates an isolated `.build-venv`, runs PyInstaller, copies runtime
+configuration and documentation, validates the packaged executable, and creates
+the ZIP archive.
 
-- 自动化页面结构可能随搜索引擎更新而变化。
-- 热点接口属于外部服务，可能发生限流、字段调整或暂时不可用。
-- 搜索节奏和页面交互用于还原常规操作流程，不保证绕过网站的自动化检测。
-- 请遵守目标网站的服务条款、访问频率限制以及所在地适用法律。
+## 🗺️ Roadmap
+
+- [ ] Add Edge 151 WebSocket/CDP session attachment.
+- [ ] Introduce a transport-neutral browser session layer.
+- [ ] Build a desktop GUI on top of the stable application interfaces.
+- [ ] Add clearer release versioning and automated GitHub builds.
+
+## ⚠️ Notes
+
+- Search engine markup and external topic APIs can change without notice.
+- Interaction pacing reproduces a normal workflow but does not guarantee that a
+  website will classify the session as human-operated.
+- Use the project in accordance with website terms, rate limits, and applicable law.

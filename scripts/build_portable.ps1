@@ -59,6 +59,8 @@ Copy-Item -LiteralPath (Join-Path $projectRoot "packaging\check.cmd") `
     -Destination $portableRoot -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "README.md") `
     -Destination $portableRoot -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot "README.zh-CN.md") `
+    -Destination $portableRoot -Force
 
 & (Join-Path $portableRoot "AutoSearcher.exe") `
     --config (Join-Path $configDirectory "config.yaml") check
