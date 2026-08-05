@@ -4,10 +4,7 @@
 
 Extensible, human-paced web search automation for Windows and Microsoft Edge.
 
-![Python 3.11 or newer](https://img.shields.io/badge/python-3.11_or_newer-3776AB.svg)
-![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows)
-![Browser](https://img.shields.io/badge/Browser-Microsoft%20Edge-0A66C2?logo=microsoftedge)
-![Release v0.1.0](https://img.shields.io/badge/release-v0.1.0-4C8BF5.svg)
+![Python 3.11 or newer](https://img.shields.io/badge/python-3.11_or_newer-3776AB.svg) ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows) ![Browser](https://img.shields.io/badge/Browser-Microsoft%20Edge-0A66C2?logo=microsoftedge) ![Release v0.1.0](https://img.shields.io/badge/release-v0.1.0-4C8BF5.svg)
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -36,6 +33,13 @@ It contains no account, sign-in, reward, or points logic.
 - Resolves the current Windows Edge user-data directory and last-used profile.
 - Encapsulates browser interaction, source access, caching, and orchestration.
 - Ships as a portable Windows ZIP that does not require Python on the target PC.
+
+## 🗺️ Roadmap
+
+- [ ] Add Edge 151 WebSocket/CDP session attachment.
+- [ ] Introduce a transport-neutral browser session layer.
+- [ ] Build a desktop GUI on top of the stable application interfaces.
+- [ ] Add clearer release versioning and automated GitHub builds.
 
 ## 🧭 How It Works
 
@@ -278,13 +282,6 @@ dist\AutoSearcher-portable-win-x64.zip
 The build creates an isolated `.build-venv`, runs PyInstaller, copies runtime
 configuration and documentation, validates the packaged executable, and creates
 the ZIP archive.
-
-## 🗺️ Roadmap
-
-- [ ] Add Edge 151 WebSocket/CDP session attachment.
-- [ ] Introduce a transport-neutral browser session layer.
-- [ ] Build a desktop GUI on top of the stable application interfaces.
-- [ ] Add clearer release versioning and automated GitHub builds.
 
 ## ⚠️ Notes
 

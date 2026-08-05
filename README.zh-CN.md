@@ -4,10 +4,7 @@
 
 面向 Windows 与 Microsoft Edge 的可扩展、自然节奏网页自动搜索工具。
 
-![Python 3.11 or newer](https://img.shields.io/badge/python-3.11_or_newer-3776AB.svg)
-![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows)
-![Browser](https://img.shields.io/badge/Browser-Microsoft%20Edge-0A66C2?logo=microsoftedge)
-![Release v0.1.0](https://img.shields.io/badge/release-v0.1.0-4C8BF5.svg)
+![Python 3.11 or newer](https://img.shields.io/badge/python-3.11_or_newer-3776AB.svg) ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows) ![Browser](https://img.shields.io/badge/Browser-Microsoft%20Edge-0A66C2?logo=microsoftedge) ![Release v0.1.0](https://img.shields.io/badge/release-v0.1.0-4C8BF5.svg)
 
 [English](README.md) · **简体中文**
 
@@ -35,7 +32,14 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 - 将浏览器交互、数据源访问、缓存和流程协调拆分为独立组件。
 - 提供目标机器无需安装 Python 的 Windows 便携 ZIP。
 
-## 🧭 How It Works
+## 🗺️ 开发计划
+
+- [ ] 支持 Edge 151 WebSocket/CDP 会话接管。
+- [ ] 引入与传输方式无关的浏览器会话层。
+- [ ] 基于稳定的应用接口开发桌面 GUI。
+- [ ] 增加明确的发行版本管理和 GitHub 自动构建。
+
+## 🧭 工作原理
 
 ```mermaid
 flowchart LR
@@ -90,7 +94,7 @@ auto-searcher
 源码运行要求 Python 3.11 或更高版本。项目采用标准 `src` 布局，开发时建议
 使用可编辑安装。
 
-## 🖥️ CLI
+## 🖥️ 命令行
 
 ```text
 auto-searcher [options] [{run,check,topics}]
@@ -269,13 +273,6 @@ dist\AutoSearcher-portable-win-x64.zip
 
 构建过程会创建隔离的 `.build-venv`、运行 PyInstaller、复制运行配置与文档、
 验证打包后的可执行文件，然后生成 ZIP。
-
-## 🗺️ Roadmap
-
-- [ ] 支持 Edge 151 WebSocket/CDP 会话接管。
-- [ ] 引入与传输方式无关的浏览器会话层。
-- [ ] 基于稳定的应用接口开发桌面 GUI。
-- [ ] 增加明确的发行版本管理和 GitHub 自动构建。
 
 ## ⚠️ 注意事项
 
