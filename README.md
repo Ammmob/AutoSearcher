@@ -83,6 +83,7 @@ Extract `AutoSearcher-portable-win-x64.zip`, then run:
 
 ```powershell
 .\check.cmd
+.\check_edge_port.cmd
 .\run.cmd
 ```
 

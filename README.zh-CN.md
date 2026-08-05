@@ -81,6 +81,7 @@ flowchart LR
 
 ```powershell
 .\check.cmd
+.\check_edge_port.cmd
 .\run.cmd
 ```
 
