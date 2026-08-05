@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-searcher"
+version = "0.1.0"
+description = "Extensible browser automation for searching trending topics"
+requires-python = ">=3.11"
+dependencies = [
+    "PyYAML>=6.0,<7",
+    "requests>=2.31,<3",
+    "selenium>=4.15,<5",
+]
+
+[project.optional-dependencies]
+build = [
+    "PyInstaller>=6.11,<7",
+]
+
+[project.scripts]
+auto-searcher = "auto_searcher.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["auto_searcher*"]

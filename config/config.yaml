@@ -1,0 +1,19 @@
+browser:
+  type: edge
+  page_timeout_seconds: 20
+
+search:
+  url: https://www.bing.com
+  count: 3
+  interval_seconds: [3, 5]
+  typing_delay_seconds: [0.08, 0.20]
+  scroll_count: [3, 6]
+  scroll_pause_seconds: [1.5, 3]
+
+sources:
+  enabled:
+    - baidu
+    - tencent
+    - toutiao
+  request_timeout_seconds: 10
+  fallback_file: ../data/fallback_topics.txt
