@@ -211,16 +211,25 @@ class CdpBackendTests(unittest.TestCase):
 class FakeCdpPage:
     def __init__(self) -> None:
         self.commands: list[tuple[str, dict[str, object]]] = []
-        self.wait_count = 0
+        self.scroll_y = 0
 
     def evaluate(self, expression: str) -> object:
         if expression == "location.href":
             return "https://www.bing.com/"
-        return {"height": 1000, "viewport": 800, "width": 1200, "y": 0}
+        if expression in {
+            CdpInteraction.SEARCH_BOX_FOCUSED_EXPRESSION,
+            CdpInteraction.SEARCH_BOX_EMPTY_EXPRESSION,
+        }:
+            return True
+        return {
+            "height": 1800,
+            "viewport": 800,
+            "width": 1200,
+            "y": self.scroll_y,
+        }
 
     def wait_for_value(self, expression: str, timeout_message: str) -> object:
-        self.wait_count += 1
-        if self.wait_count == 1:
+        if expression == CdpInteraction.SEARCH_BOX_EXPRESSION:
             return {"x": 300, "y": 100}
         return "https://www.bing.com/search?q=test"
 
@@ -229,7 +238,12 @@ class FakeCdpPage:
         method: str,
         params: dict[str, object] | None = None,
     ) -> dict[str, object]:
-        self.commands.append((method, params or {}))
+        command_params = params or {}
+        self.commands.append((method, command_params))
+        if method == "Input.dispatchMouseEvent":
+            delta_y = command_params.get("deltaY")
+            if isinstance(delta_y, int):
+                self.scroll_y = max(0, self.scroll_y + delta_y)
         return {}
 
 
@@ -237,7 +251,7 @@ class CdpInteractionTests(unittest.TestCase):
     def test_implementation_inherits_interface(self) -> None:
         self.assertTrue(issubclass(CdpInteraction, Interaction))
 
-    def test_search_uses_cdp_input_commands(self) -> None:
+    def test_consecutive_searches_restore_search_box_before_selecting(self) -> None:
         page = FakeCdpPage()
         interaction = CdpInteraction(
             page,
@@ -246,6 +260,8 @@ class CdpInteractionTests(unittest.TestCase):
         )
 
         interaction.search("测试")
+        page.scroll_y = 900
+        interaction.search("新闻")
 
         methods = [method for method, _params in page.commands]
         inserted_text = [
@@ -255,7 +271,24 @@ class CdpInteractionTests(unittest.TestCase):
         ]
         self.assertIn("Input.dispatchMouseEvent", methods)
         self.assertIn("Input.dispatchKeyEvent", methods)
-        self.assertEqual(inserted_text, ["测", "试"])
+        self.assertEqual(inserted_text, ["测", "试", "新", "闻"])
+        upward_scrolls = [
+            params["deltaY"]
+            for method, params in page.commands
+            if method == "Input.dispatchMouseEvent"
+            and isinstance(params.get("deltaY"), int)
+            and params["deltaY"] < 0
+        ]
+        self.assertTrue(upward_scrolls)
+        select_all_events = [
+            params
+            for method, params in page.commands
+            if method == "Input.dispatchKeyEvent"
+            and params.get("key") == "a"
+            and params.get("type") == "rawKeyDown"
+        ]
+        self.assertEqual(len(select_all_events), 2)
+        self.assertTrue(all("commands" not in event for event in select_all_events))
 
 
 if __name__ == "__main__":

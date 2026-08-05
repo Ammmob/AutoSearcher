@@ -38,12 +38,34 @@ class CdpInteraction(Interaction):
                 style.visibility === 'hidden' ||
                 style.display === 'none' ||
                 rect.width <= 0 ||
-                rect.height <= 0
+                rect.height <= 0 ||
+                rect.bottom <= 0 ||
+                rect.top >= window.innerHeight
             ) return null;
             return {
                 x: rect.left + rect.width / 2,
                 y: rect.top + rect.height / 2
             };
+        })()
+    """
+    SEARCH_BOX_FOCUSED_EXPRESSION = """
+        (() => {
+            const element = document.querySelector('[name="q"]');
+            return element !== null && document.activeElement === element;
+        })()
+    """
+    FOCUS_SEARCH_BOX_EXPRESSION = """
+        (() => {
+            const element = document.querySelector('[name="q"]');
+            if (!element) return false;
+            element.focus();
+            return document.activeElement === element;
+        })()
+    """
+    SEARCH_BOX_EMPTY_EXPRESSION = """
+        (() => {
+            const element = document.querySelector('[name="q"]');
+            return element !== null && element.value === '';
         })()
     """
     PAGE_METRICS_EXPRESSION = """
@@ -79,6 +101,7 @@ class CdpInteraction(Interaction):
 
     def search(self, keyword: str) -> None:
         previous_url = str(self._page.evaluate("location.href"))
+        self._scroll_to_top()
         position = self._page.wait_for_value(
             self.SEARCH_BOX_EXPRESSION,
             "等待搜索框超时",
@@ -88,8 +111,11 @@ class CdpInteraction(Interaction):
         x = float(position["x"])
         y = float(position["y"])
         self._move_and_click(x, y)
+        self._ensure_search_box_focus()
         self._select_all()
         self._press_key("Backspace", "Backspace", 8)
+        if self._page.evaluate(self.SEARCH_BOX_EMPTY_EXPRESSION) is not True:
+            raise RuntimeError("搜索框内容清空失败")
 
         for index, character in enumerate(keyword):
             self._page.command("Input.insertText", {"text": character})
@@ -165,7 +191,6 @@ class CdpInteraction(Interaction):
                 "code": "KeyA",
                 "windowsVirtualKeyCode": 65,
                 "modifiers": 2,
-                "commands": ["SelectAll"],
             },
         )
         self._page.command(
@@ -178,6 +203,22 @@ class CdpInteraction(Interaction):
                 "modifiers": 2,
             },
         )
+
+    def _ensure_search_box_focus(self) -> None:
+        focused = self._page.evaluate(self.SEARCH_BOX_FOCUSED_EXPRESSION)
+        if focused is not True:
+            focused = self._page.evaluate(self.FOCUS_SEARCH_BOX_EXPRESSION)
+        if focused is not True:
+            raise RuntimeError("搜索框无法获得输入焦点")
+
+    def _scroll_to_top(self) -> None:
+        metrics = self._page_metrics()
+        remaining = round(metrics["y"])
+        while remaining > 0:
+            distance = min(self._rng.randint(400, 800), remaining)
+            self._scroll(metrics, -distance)
+            remaining -= distance
+            self._sleep(self._rng.uniform(0.05, 0.15))
 
     def _press_key(self, key: str, code: str, virtual_key: int) -> None:
         for event_type in ("rawKeyDown", "keyUp"):
