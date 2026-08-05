@@ -54,20 +54,12 @@ class EdgeBrowser(ChromiumBrowser):
         option = "--remote-debugging-port"
         remaining: list[str] = []
         configured_port: str | None = None
-        index = 0
-        while index < len(arguments):
-            argument = arguments[index]
+        for argument in arguments:
             normalized = argument.casefold()
             if normalized.startswith(f"{option}="):
                 configured_port = argument.split("=", maxsplit=1)[1]
-            elif normalized == option:
-                configured_port = ""
-                if index + 1 < len(arguments) and not arguments[index + 1].startswith("--"):
-                    configured_port = arguments[index + 1]
-                    index += 1
             else:
                 remaining.append(argument)
-            index += 1
         return remaining, configured_port
 
     @staticmethod

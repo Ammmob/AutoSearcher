@@ -138,8 +138,7 @@ class EdgeBrowserTests(unittest.TestCase):
                 args=(
                     "--profile-directory=Profile 1",
                     "--user-data-dir=D:/EdgeProfile",
-                    "--remote-debugging-port",
-                    "9224",
+                    "--remote-debugging-port=9224",
                 ),
             ),
             SearchConfig(),
