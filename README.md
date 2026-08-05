@@ -37,8 +37,9 @@ It contains no account, sign-in, reward, or points logic.
 ## 🗺️ Roadmap
 
 - [x] Add experimental Edge 151 WebSocket/CDP session attachment.
+- [x] Use one CDP backend for supported Edge versions.
 - [ ] Validate Edge 151 attachment and launch behavior on additional machines.
-- [ ] Consolidate shared interaction pacing across WebDriver and CDP.
+- [x] Separate browser, backend, and interaction responsibilities.
 - [ ] Build a desktop GUI on top of the stable application interfaces.
 - [ ] Add clearer release versioning and automated GitHub builds.
 
@@ -58,9 +59,11 @@ flowchart LR
 The main dependencies point inward toward small interfaces:
 
 - `AutoSearcher` coordinates the run through the `Browser` contract.
+- `EdgeBrowser` delegates browser control to `CdpBackend`.
+- `CdpBackend` owns connection, tab, and browser lifecycle behavior.
+- `CdpInteraction` implements typing, clicking, and result browsing through CDP.
 - `TopicGather` owns source fallback, aggregation, shuffling, and deduplication.
 - `Source`, `HttpSource`, and `CachedSource` separate provider behavior from cache behavior.
-- `SearchInteraction` contains WebDriver-specific typing and scrolling actions.
 - `schemas` contains configuration and search data structures only.
 
 ## 🚀 Quick Start
@@ -79,9 +82,8 @@ Extract `AutoSearcher-portable-win-x64.zip`, then run:
 .\run.cmd
 ```
 
-The target machine does not need Python or project dependencies. If a matching
-EdgeDriver is not already cached, Selenium Manager may need network access on the
-first run.
+The target machine does not need Python, an external browser driver, or project
+dependencies.
 
 ### Run from source
 
@@ -107,7 +109,7 @@ auto-searcher [options] [{run,check,topics}]
 | Command | Purpose |
 | --- | --- |
 | `run` | Collect topics and perform the complete search workflow; this is the default. |
-| `check` | Validate configuration and packaged Selenium resources, then show resolved paths. |
+| `check` | Validate configuration and show resolved paths. |
 | `topics` | Collect and print topics without opening Edge. |
 
 Common examples:
@@ -217,7 +219,7 @@ For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
 then reads the browser-level WebSocket path, opens a dedicated tab through CDP,
 and closes only that tab after an attached run. If Edge 151 is not running,
 AutoSearcher starts the normal profile and waits for the enabled WebSocket
-service instead of creating an EdgeDriver session.
+service.
 
 An attached session receives a new tab, and AutoSearcher closes only that tab at
 the end. A browser started by AutoSearcher is owned by the program and is closed
@@ -243,8 +245,8 @@ AutoSearcher/
 │  ├─ __main__.py          CLI and dependency assembly
 │  ├─ auto_searcher.py     Search workflow coordinator
 │  ├─ topic_gather.py      Topic aggregation and fallback
-│  ├─ browsers/            Browser hierarchy and interactions
-│  │  └─ cdp/              Edge 151 CDP transport and interactions
+│  ├─ browsers/            Browser, backend, and interaction layers
+│  │  └─ cdp/              Low-level CDP connection, endpoint, and page
 │  ├─ schemas/             Configuration and search structures
 │  ├─ sources/             Source hierarchy and daily cache
 │  └─ utils/               Configuration and path helpers

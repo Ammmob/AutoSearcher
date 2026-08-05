@@ -1,5 +1,7 @@
 """Resolve Edge's browser-level CDP WebSocket endpoint."""
 
+import http.client
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,6 +10,31 @@ from pathlib import Path
 class EdgeEndpoint:
     address: str
     websocket_url: str
+
+
+def read_http_endpoint(address: str) -> EdgeEndpoint | None:
+    connection: http.client.HTTPConnection | None = None
+    try:
+        host, port_text = address.rsplit(":", maxsplit=1)
+        port = int(port_text)
+        connection = http.client.HTTPConnection(host, port, timeout=0.5)
+        connection.request("GET", "/json/version")
+        response = connection.getresponse()
+        if response.status != 200:
+            return None
+        data = json.loads(response.read().decode("utf-8"))
+        product = data.get("Browser")
+        websocket_url = data.get("webSocketDebuggerUrl")
+        if not isinstance(product, str) or not product.startswith("Edg/"):
+            return None
+        if not isinstance(websocket_url, str) or not websocket_url.startswith("ws"):
+            return None
+        return EdgeEndpoint(address, websocket_url)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 def read_edge_endpoint(

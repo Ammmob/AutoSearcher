@@ -1,7 +1,6 @@
 browser:
   type: edge
   page_timeout_seconds: 20
-
 search:
   url: https://www.bing.com
   count: 3

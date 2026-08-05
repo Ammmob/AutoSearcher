@@ -1,12 +1,8 @@
-"""Browser abstractions and implementations."""
+"""High-level browser abstractions and implementations."""
 
-from .search_interaction import SearchInteraction
-from .base_browser import Browser, SearchBrowser
-from .edge_browser import EdgeBrowser
+from .browser import Browser, EdgeBrowser
 
 __all__ = [
     "Browser",
-    "SearchInteraction",
-    "SearchBrowser",
     "EdgeBrowser",
 ]

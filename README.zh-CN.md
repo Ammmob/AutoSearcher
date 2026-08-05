@@ -35,8 +35,9 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 ## 🗺️ 开发计划
 
 - [x] 增加实验性的 Edge 151 WebSocket/CDP 会话接管。
+- [x] 使用一套 CDP 后端支持不同 Edge 版本。
 - [ ] 在更多机器上验证 Edge 151 的接管与启动行为。
-- [ ] 合并 WebDriver 与 CDP 共用的交互节奏逻辑。
+- [x] 分离浏览器、控制后端和搜索交互职责。
 - [ ] 基于稳定的应用接口开发桌面 GUI。
 - [ ] 增加明确的发行版本管理和 GitHub 自动构建。
 
@@ -56,9 +57,11 @@ flowchart LR
 核心依赖统一指向小型接口：
 
 - `AutoSearcher` 通过 `Browser` 接口协调完整运行流程。
+- `EdgeBrowser` 将浏览器控制委托给 `CdpBackend`。
+- `CdpBackend` 负责连接、标签页和浏览器生命周期。
+- `CdpInteraction` 通过 CDP 实现输入、点击和结果页浏览。
 - `TopicGather` 负责来源容错、聚合、随机排序、去重和保险话题切换。
 - `Source`、`HttpSource` 和 `CachedSource` 分离来源行为与缓存行为。
-- `SearchInteraction` 封装 WebDriver 输入和滚动操作。
 - `schemas` 只保存配置与搜索数据结构。
 
 ## 🚀 快速开始
@@ -77,8 +80,7 @@ flowchart LR
 .\run.cmd
 ```
 
-目标机器不需要安装 Python 或项目依赖。如果本机尚未缓存匹配的 EdgeDriver，
-Selenium Manager 首次运行时可能需要联网下载。
+目标机器不需要安装 Python、额外的浏览器驱动或项目依赖。
 
 ### 从源码运行
 
@@ -104,7 +106,7 @@ auto-searcher [options] [{run,check,topics}]
 | 命令 | 作用 |
 | --- | --- |
 | `run` | 获取话题并执行完整搜索；这是默认命令。 |
-| `check` | 检查配置和 Selenium 打包资源，并显示解析后的路径。 |
+| `check` | 检查配置并显示解析后的路径。 |
 | `topics` | 仅获取并显示话题，不打开 Edge。 |
 
 常用示例：
@@ -211,7 +213,7 @@ sources:
 Edge 151 需要先在 `edge://inspect` 中启用一次远程调试。之后 AutoSearcher
 读取浏览器级 WebSocket 地址，通过 CDP 创建独立标签页；接管运行结束时只关闭
 该标签页。如果 Edge 151 尚未运行，AutoSearcher 会启动普通用户配置并等待已
-启用的 WebSocket 服务，而不会创建可能卡住的 EdgeDriver 会话。
+启用的 WebSocket 服务。
 
 接管已有会话时，AutoSearcher 会新建标签页，任务结束后只关闭该标签页。由
 AutoSearcher 启动的浏览器归程序所有，任务结束时会关闭整个浏览器实例。
@@ -235,8 +237,8 @@ AutoSearcher/
 │  ├─ __main__.py          命令行入口与依赖组装
 │  ├─ auto_searcher.py     搜索流程协调器
 │  ├─ topic_gather.py      话题聚合与保险切换
-│  ├─ browsers/            浏览器层次与搜索交互
-│  │  └─ cdp/              Edge 151 CDP 通信与搜索交互
+│  ├─ browsers/            浏览器、控制后端与搜索交互层
+│  │  └─ cdp/              CDP 连接、端点与页面底层
 │  ├─ schemas/             配置与搜索数据结构
 │  ├─ sources/             数据源层次与每日缓存
 │  └─ utils/               配置及路径工具

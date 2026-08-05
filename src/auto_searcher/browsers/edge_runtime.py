@@ -1,27 +1,11 @@
-"""Locate Microsoft Edge and read its Windows file version."""
+"""Locate Microsoft Edge and inspect its local runtime state."""
 
-import ctypes
+import csv
 import os
-from ctypes import wintypes
+import socket
+import subprocess
+from io import StringIO
 from pathlib import Path
-
-
-class _FixedFileInfo(ctypes.Structure):
-    _fields_ = [
-        ("signature", wintypes.DWORD),
-        ("structure_version", wintypes.DWORD),
-        ("file_version_ms", wintypes.DWORD),
-        ("file_version_ls", wintypes.DWORD),
-        ("product_version_ms", wintypes.DWORD),
-        ("product_version_ls", wintypes.DWORD),
-        ("file_flags_mask", wintypes.DWORD),
-        ("file_flags", wintypes.DWORD),
-        ("file_os", wintypes.DWORD),
-        ("file_type", wintypes.DWORD),
-        ("file_subtype", wintypes.DWORD),
-        ("file_date_ms", wintypes.DWORD),
-        ("file_date_ls", wintypes.DWORD),
-    ]
 
 
 def find_edge_executable() -> Path | None:
@@ -39,24 +23,71 @@ def find_edge_executable() -> Path | None:
     return None
 
 
-def read_edge_major_version(executable: Path) -> int | None:
-    if os.name != "nt":
-        return None
-    version = ctypes.windll.version
-    size = version.GetFileVersionInfoSizeW(str(executable), None)
-    if not size:
-        return None
-    buffer = ctypes.create_string_buffer(size)
-    if not version.GetFileVersionInfoW(str(executable), 0, size, buffer):
-        return None
-    value = ctypes.c_void_p()
-    value_length = wintypes.UINT()
-    if not version.VerQueryValueW(
-        buffer,
-        "\\",
-        ctypes.byref(value),
-        ctypes.byref(value_length),
-    ):
-        return None
-    info = ctypes.cast(value, ctypes.POINTER(_FixedFileInfo)).contents
-    return info.file_version_ms >> 16
+def edge_process_ids() -> set[str]:
+    try:
+        result = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq msedge.exe", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    return {
+        row[1]
+        for row in csv.reader(StringIO(result.stdout))
+        if len(row) >= 2 and row[0].casefold() == "msedge.exe"
+    }
+
+
+def edge_process_is_running() -> bool:
+    return bool(edge_process_ids())
+
+
+def listening_edge_addresses() -> tuple[str, ...]:
+    process_ids = edge_process_ids()
+    if not process_ids:
+        return ()
+    try:
+        result = subprocess.run(
+            ["netstat", "-ano", "-p", "TCP"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ()
+
+    ports: set[int] = set()
+    for line in result.stdout.splitlines():
+        fields = line.split()
+        if len(fields) < 5 or fields[-1] not in process_ids:
+            continue
+        if fields[-2].upper() != "LISTENING":
+            continue
+        try:
+            port = int(fields[1].rsplit(":", maxsplit=1)[-1])
+        except ValueError:
+            continue
+        if 1 <= port <= 65535:
+            ports.add(port)
+    return tuple(f"127.0.0.1:{port}" for port in sorted(ports))
+
+
+def port_is_available(port: int) -> bool:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                listener.setsockopt(
+                    socket.SOL_SOCKET,
+                    socket.SO_EXCLUSIVEADDRUSE,
+                    1,
+                )
+            listener.bind(("127.0.0.1", port))
+    except OSError:
+        return False
+    return True

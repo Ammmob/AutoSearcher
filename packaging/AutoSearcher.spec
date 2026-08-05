@@ -1,37 +1,14 @@
 from pathlib import Path
 
-import selenium
-
 project_root = Path(SPECPATH).parent
 source_root = project_root / "src"
-selenium_root = Path(selenium.__file__).resolve().parent
-selenium_manager = (
-    selenium_root
-    / "webdriver"
-    / "common"
-    / "windows"
-    / "selenium-manager.exe"
-)
-selenium_javascript = [
-    (
-        str(path),
-        "selenium/webdriver/remote",
-    )
-    for path in sorted((selenium_root / "webdriver" / "remote").glob("*.js"))
-]
-
 analysis = Analysis(
     [str(source_root / "auto_searcher" / "__main__.py")],
     pathex=[str(source_root)],
-    binaries=[
-        (
-            str(selenium_manager),
-            "selenium/webdriver/common/windows",
-        )
-    ],
-    datas=selenium_javascript,
-    hiddenimports=["selenium.webdriver.common.action_chains"],
-    hookspath=[str(project_root / "packaging" / "hooks")],
+    binaries=[],
+    datas=[],
+    hiddenimports=[],
+    hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=["tkinter"],

@@ -21,6 +21,10 @@ class FakeBrowser(Browser):
         self.closed = False
         self.searched: list[str] = []
 
+    @property
+    def name(self) -> str:
+        return "Fake"
+
     def open(self) -> None:
         self.opened = True
 

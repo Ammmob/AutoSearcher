@@ -6,13 +6,14 @@ from unittest.mock import Mock, patch
 
 from auto_searcher.browsers.cdp import (
     CdpConnection,
-    CdpEdgeBrowser,
     CdpError,
     CdpPage,
-    CdpSearchInteraction,
     EdgeEndpoint,
     read_edge_endpoint,
+    read_http_endpoint,
 )
+from auto_searcher.browsers.backend import CdpBackend
+from auto_searcher.browsers.interaction import CdpInteraction, Interaction
 from auto_searcher.schemas import BrowserConfig, SearchConfig
 
 
@@ -75,6 +76,29 @@ class CdpPageTests(unittest.TestCase):
 
 
 class EdgeEndpointTests(unittest.TestCase):
+    @patch("auto_searcher.browsers.cdp.endpoint.http.client.HTTPConnection")
+    def test_reads_classic_http_websocket_endpoint(self, connection_type) -> None:
+        response = connection_type.return_value.getresponse.return_value
+        response.status = 200
+        response.read.return_value = json.dumps(
+            {
+                "Browser": "Edg/131.0",
+                "webSocketDebuggerUrl": (
+                    "ws://127.0.0.1:9222/devtools/browser/browser-id"
+                ),
+            }
+        ).encode("utf-8")
+
+        endpoint = read_http_endpoint("127.0.0.1:9222")
+
+        self.assertEqual(
+            endpoint,
+            EdgeEndpoint(
+                "127.0.0.1:9222",
+                "ws://127.0.0.1:9222/devtools/browser/browser-id",
+            ),
+        )
+
     def test_reads_browser_websocket_endpoint(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             user_data_dir = Path(temp_dir)
@@ -119,8 +143,8 @@ class EdgeEndpointTests(unittest.TestCase):
             self.assertIsNone(read_edge_endpoint(user_data_dir))
 
 
-class CdpEdgeBrowserTests(unittest.TestCase):
-    @patch("auto_searcher.browsers.cdp.edge_browser.CdpPage")
+class CdpBackendTests(unittest.TestCase):
+    @patch("auto_searcher.browsers.backend.CdpPage")
     def test_open_creates_and_prepares_an_isolated_tab(self, cdp_page) -> None:
         connection = Mock()
         connection.command.side_effect = [
@@ -129,18 +153,18 @@ class CdpEdgeBrowserTests(unittest.TestCase):
             {"sessionId": "session-1"},
         ]
         page = cdp_page.return_value
-        browser = CdpEdgeBrowser(
-            EdgeEndpoint(
+        backend = CdpBackend(
+            BrowserConfig(),
+            SearchConfig(),
+            endpoint=EdgeEndpoint(
                 "127.0.0.1:9222",
                 "ws://127.0.0.1:9222/devtools/browser/test",
             ),
-            BrowserConfig(),
-            SearchConfig(),
             connection=connection,
             interaction=Mock(),
         )
 
-        browser.open()
+        backend.open()
 
         connection.open.assert_called_once_with()
         connection.command.assert_any_call("Browser.getVersion")
@@ -156,7 +180,7 @@ class CdpEdgeBrowserTests(unittest.TestCase):
         page.navigate.assert_called_once_with("https://www.bing.com")
         page.activate.assert_called_once_with()
 
-    @patch("auto_searcher.browsers.cdp.edge_browser.CdpPage")
+    @patch("auto_searcher.browsers.backend.CdpPage")
     def test_owned_browser_closes_the_whole_edge_instance(self, cdp_page) -> None:
         connection = Mock()
         connection.command.side_effect = [
@@ -165,20 +189,20 @@ class CdpEdgeBrowserTests(unittest.TestCase):
             {"sessionId": "session-1"},
             {},
         ]
-        browser = CdpEdgeBrowser(
-            EdgeEndpoint(
+        backend = CdpBackend(
+            BrowserConfig(),
+            SearchConfig(),
+            endpoint=EdgeEndpoint(
                 "127.0.0.1:9222",
                 "ws://127.0.0.1:9222/devtools/browser/test",
             ),
-            BrowserConfig(),
-            SearchConfig(),
             connection=connection,
             interaction=Mock(),
-            owns_browser=True,
         )
-        browser.open()
+        backend._owns_browser = True
+        backend.open()
 
-        browser.close()
+        backend.close()
 
         connection.command.assert_called_with("Browser.close")
         cdp_page.return_value.close.assert_not_called()
@@ -209,15 +233,19 @@ class FakeCdpPage:
         return {}
 
 
-class CdpSearchInteractionTests(unittest.TestCase):
+class CdpInteractionTests(unittest.TestCase):
+    def test_implementation_inherits_interface(self) -> None:
+        self.assertTrue(issubclass(CdpInteraction, Interaction))
+
     def test_search_uses_cdp_input_commands(self) -> None:
         page = FakeCdpPage()
-        interaction = CdpSearchInteraction(
+        interaction = CdpInteraction(
+            page,
             SearchConfig(),
             sleeper=lambda _: None,
         )
 
-        interaction.search(page, "测试")
+        interaction.search("测试")
 
         methods = [method for method, _params in page.commands]
         inserted_text = [
