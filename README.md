@@ -250,11 +250,15 @@ AutoSearcher/
 │  ├─ auto_searcher.py     Search workflow coordinator
 │  ├─ topic_gather.py      Topic aggregation and fallback
 │  ├─ browsers/            Browser implementations
-│  │  ├─ browser.py        Browser interfaces and shared Chromium flow
-│  │  ├─ edge_browser.py   Edge implementation and runtime helpers
-│  │  └─ cdp/              Low-level CDP connection, endpoint, and page
+│  │  ├─ browser.py          Browser interface
+│  │  ├─ chromium_browser.py Shared Chromium flow
+│  │  ├─ edge_browser.py     Edge implementation and runtime helpers
+│  │  └─ cdp/                Low-level CDP connection, endpoint, and page
 │  ├─ schemas/             Configuration and search structures
 │  ├─ sources/             Source hierarchy and daily cache
+│  │  ├─ source.py           Source interface
+│  │  ├─ cached_source.py    Shared HTTP and cache flow
+│  │  └─ *_source.py         Provider-specific implementations
 │  └─ utils/               Configuration and path helpers
 ├─ tests/                  Unit tests
 ├─ config/                 Default configuration

@@ -13,7 +13,7 @@ import requests
 
 from auto_searcher.schemas import Topic
 
-from .base_source import Source
+from .source import Source
 
 logger = logging.getLogger(__name__)
 

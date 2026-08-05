@@ -1,6 +1,7 @@
 """High-level browser abstractions and implementations."""
 
-from .browser import Browser, ChromiumBrowser
+from .browser import Browser
+from .chromium_browser import ChromiumBrowser
 from .edge_browser import EdgeBrowser
 
 __all__ = [

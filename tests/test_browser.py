@@ -33,7 +33,7 @@ class BrowserTests(unittest.TestCase):
 class EdgeBrowserTests(unittest.TestCase):
     @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch(
-        "auto_searcher.browsers.browser.read_active_endpoint",
+        "auto_searcher.browsers.chromium_browser.read_active_endpoint",
         return_value=Endpoint(
             "127.0.0.1:9222",
             "ws://127.0.0.1:9222/devtools/browser/test",
@@ -56,7 +56,7 @@ class EdgeBrowserTests(unittest.TestCase):
 
     @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch(
-        "auto_searcher.browsers.browser.read_http_endpoint",
+        "auto_searcher.browsers.chromium_browser.read_http_endpoint",
         return_value=Endpoint(
             "127.0.0.1:9224",
             "ws://127.0.0.1:9224/devtools/browser/test",
@@ -68,7 +68,7 @@ class EdgeBrowserTests(unittest.TestCase):
         return_value=("127.0.0.1:9224",),
     )
     @patch(
-        "auto_searcher.browsers.browser.read_active_endpoint",
+        "auto_searcher.browsers.chromium_browser.read_active_endpoint",
         return_value=None,
     )
     def test_classic_edge_can_be_detected_through_http_endpoint(
@@ -88,20 +88,23 @@ class EdgeBrowserTests(unittest.TestCase):
         self.assertEqual(endpoint.address, "127.0.0.1:9224")
 
     @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
-    @patch("auto_searcher.browsers.browser.subprocess.Popen")
+    @patch("auto_searcher.browsers.chromium_browser.subprocess.Popen")
     @patch.object(EdgeBrowser, "_process_is_running", return_value=False)
-    @patch("auto_searcher.browsers.browser.port_is_available", return_value=True)
+    @patch(
+        "auto_searcher.browsers.chromium_browser.port_is_available",
+        return_value=True,
+    )
     @patch.object(
         EdgeBrowser,
         "_find_executable",
         return_value=Path("C:/Program Files/Microsoft/Edge/msedge.exe"),
     )
     @patch(
-        "auto_searcher.browsers.browser.read_active_endpoint",
+        "auto_searcher.browsers.chromium_browser.read_active_endpoint",
         return_value=None,
     )
     @patch(
-        "auto_searcher.browsers.browser.read_http_endpoint",
+        "auto_searcher.browsers.chromium_browser.read_http_endpoint",
         return_value=Endpoint(
             "127.0.0.1:9222",
             "ws://127.0.0.1:9222/devtools/browser/test",
@@ -130,16 +133,19 @@ class EdgeBrowserTests(unittest.TestCase):
         self.assertIn("--user-data-dir=D:/EdgeProfile", command)
         self.assertIn("--remote-debugging-port=9222", command)
 
-    @patch("auto_searcher.browsers.browser.port_is_available", return_value=False)
+    @patch(
+        "auto_searcher.browsers.chromium_browser.port_is_available",
+        return_value=False,
+    )
     @patch.object(EdgeBrowser, "_process_is_running", return_value=False)
     @patch.object(
         EdgeBrowser,
         "_find_executable",
         return_value=Path("C:/Program Files/Microsoft/Edge/msedge.exe"),
     )
-    @patch("auto_searcher.browsers.browser.subprocess.Popen")
+    @patch("auto_searcher.browsers.chromium_browser.subprocess.Popen")
     @patch(
-        "auto_searcher.browsers.browser.read_active_endpoint",
+        "auto_searcher.browsers.chromium_browser.read_active_endpoint",
         side_effect=RuntimeError("stop after launch"),
     )
     def test_launch_uses_random_port_only_when_9222_is_occupied(

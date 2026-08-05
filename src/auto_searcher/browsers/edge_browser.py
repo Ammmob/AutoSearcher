@@ -8,7 +8,7 @@ from pathlib import Path
 
 from auto_searcher.utils.path_utils import default_edge_user_data_dir
 
-from .browser import ChromiumBrowser
+from .chromium_browser import ChromiumBrowser
 
 
 class EdgeBrowser(ChromiumBrowser):

@@ -242,11 +242,15 @@ AutoSearcher/
 │  ├─ auto_searcher.py     搜索流程协调器
 │  ├─ topic_gather.py      话题聚合与保险切换
 │  ├─ browsers/            浏览器实现
-│  │  ├─ browser.py        浏览器接口与 Chromium 通用流程
-│  │  ├─ edge_browser.py   Edge 实现及运行环境辅助函数
-│  │  └─ cdp/              CDP 连接、端点与页面底层
+│  │  ├─ browser.py          浏览器接口
+│  │  ├─ chromium_browser.py Chromium 通用流程
+│  │  ├─ edge_browser.py     Edge 实现及运行环境辅助函数
+│  │  └─ cdp/                CDP 连接、端点与页面底层
 │  ├─ schemas/             配置与搜索数据结构
 │  ├─ sources/             数据源层次与每日缓存
+│  │  ├─ source.py           数据源接口
+│  │  ├─ cached_source.py    通用 HTTP 与缓存流程
+│  │  └─ *_source.py         各平台数据源实现
 │  └─ utils/               配置及路径工具
 ├─ tests/                  单元测试
 ├─ config/                 默认配置
