@@ -219,6 +219,10 @@ line; blank lines and lines beginning with `#` are ignored.
 | `debugger_address: null` | Skip attachment and start a new browser. |
 | No attachable Edge found | Start Edge on port `9222` when available; otherwise let Edge choose a free port. |
 
+When launching the normal Edge data directory, AutoSearcher lets Edge select that
+directory implicitly and passes only the profile and debugging port. An explicit
+`--user-data-dir` argument is reserved for genuinely custom directories.
+
 For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
 then reads the browser-level WebSocket path, opens a dedicated tab through CDP,
 and closes only that tab after an attached run. If Edge 151 is not running,

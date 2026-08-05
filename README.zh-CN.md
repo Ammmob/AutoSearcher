@@ -214,6 +214,9 @@ sources:
 | `debugger_address: null` | 跳过接管并启动新浏览器。 |
 | 没有可接管的 Edge | `9222` 空闲时使用该端口启动，否则让 Edge 自动选择空闲端口。 |
 
+启动 Edge 默认用户数据目录时，AutoSearcher 让 Edge 自行选择该目录，只传入配置文件
+和调试端口。只有真正使用自定义目录时才显式传入 `--user-data-dir`。
+
 Edge 151 需要先在 `edge://inspect` 中启用一次远程调试。之后 AutoSearcher
 读取浏览器级 WebSocket 地址，通过 CDP 创建独立标签页；接管运行结束时只关闭
 该标签页。如果 Edge 151 尚未运行，AutoSearcher 会启动普通用户配置并等待已

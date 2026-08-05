@@ -1,6 +1,7 @@
 """Shared Chromium browser implementation."""
 
 import logging
+import os
 import random
 import subprocess
 import time
@@ -145,7 +146,7 @@ class ChromiumBrowser(Browser):
             str(executable),
             f"--profile-directory={self._browser_config.profile_name}",
         ]
-        if user_data_dir:
+        if user_data_dir and not self._uses_default_user_data_dir(user_data_dir):
             command.append(f"--user-data-dir={user_data_dir}")
 
         debugger_address = self._browser_config.debugger_address
@@ -163,6 +164,7 @@ class ChromiumBrowser(Browser):
             expected_address = None
         command.append(f"--remote-debugging-port={port}")
         logger.info("启动 %s，通过 CDP WebSocket 连接", self.name)
+        logger.debug("浏览器启动参数: %s", subprocess.list2cmdline(command))
 
         try:
             subprocess.Popen(
@@ -193,6 +195,11 @@ class ChromiumBrowser(Browser):
             f"{self.name} 已启动，但没有开放可用的 CDP WebSocket。"
             f"{self._remote_debugging_hint()}"
         )
+
+    def _uses_default_user_data_dir(self, user_data_dir: str | Path) -> bool:
+        configured = os.path.normcase(os.path.abspath(user_data_dir))
+        default = os.path.normcase(os.path.abspath(self._default_user_data_dir()))
+        return configured == default
 
     @classmethod
     @abstractmethod
