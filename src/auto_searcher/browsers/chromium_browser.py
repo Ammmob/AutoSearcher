@@ -79,13 +79,13 @@ class ChromiumBrowser(Browser):
             return None
 
         candidates: list[Endpoint] = []
-        if browser_config.user_data_dir:
-            file_endpoint = read_active_endpoint(
-                browser_config.user_data_dir,
-                browser_config.debugger_address,
-            )
-            if file_endpoint is not None:
-                candidates.append(file_endpoint)
+        endpoint_dir = browser_config.user_data_dir or cls._default_user_data_dir()
+        file_endpoint = read_active_endpoint(
+            endpoint_dir,
+            browser_config.debugger_address,
+        )
+        if file_endpoint is not None:
+            candidates.append(file_endpoint)
 
         if browser_config.debugger_address:
             http_endpoint = read_http_endpoint(browser_config.debugger_address)
@@ -139,6 +139,12 @@ class ChromiumBrowser(Browser):
 
         user_data_dir = self._browser_config.user_data_dir
         command = [str(executable)]
+        if self._browser_config.profile_name:
+            command.append(
+                f"--profile-directory={self._browser_config.profile_name}"
+            )
+        if user_data_dir:
+            command.append(f"--user-data-dir={user_data_dir}")
         logger.info("启动 %s，等待浏览器开放 CDP WebSocket", self.name)
         logger.debug("浏览器启动参数: %s", subprocess.list2cmdline(command))
 

@@ -32,6 +32,11 @@ class BrowserTests(unittest.TestCase):
 
 class EdgeBrowserTests(unittest.TestCase):
     @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
+    @patch.object(
+        EdgeBrowser,
+        "_default_user_data_dir",
+        return_value=Path("D:/DefaultEdgeData"),
+    )
     @patch(
         "auto_searcher.browsers.chromium_browser.read_active_endpoint",
         return_value=Endpoint(
@@ -42,16 +47,17 @@ class EdgeBrowserTests(unittest.TestCase):
     def test_detects_endpoint_from_active_port_file(
         self,
         _read_endpoint,
+        _default_user_data_dir,
         is_supported_endpoint,
     ) -> None:
         config = BrowserConfig(
-            user_data_dir="D:/EdgeProfile",
             auto_detect_debugger=True,
         )
 
         endpoint = EdgeBrowser.detect_endpoint(config)
 
         self.assertEqual(endpoint.address, "127.0.0.1:9222")
+        _read_endpoint.assert_called_once_with(Path("D:/DefaultEdgeData"), None)
         is_supported_endpoint.assert_called_once()
 
     @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
@@ -102,7 +108,7 @@ class EdgeBrowserTests(unittest.TestCase):
             "ws://127.0.0.1:9222/devtools/browser/test",
         ),
     )
-    def test_launch_passes_no_browser_arguments(
+    def test_launch_only_passes_explicit_user_arguments(
         self,
         _read_file_endpoint,
         _find_executable,
@@ -112,22 +118,41 @@ class EdgeBrowserTests(unittest.TestCase):
     ) -> None:
         browser = EdgeBrowser(
             BrowserConfig(
-                user_data_dir="D:/EdgeProfile",
-                profile_name="Profile 1",
                 debugger_address="127.0.0.1:9222",
             ),
             SearchConfig(),
             sleeper=lambda _: None,
         )
 
-        endpoint = browser._launch()
+        implicit_endpoint = browser._launch()
 
-        self.assertEqual(endpoint.address, "127.0.0.1:9222")
+        self.assertEqual(implicit_endpoint.address, "127.0.0.1:9222")
         self.assertEqual(
             popen.call_args.args[0],
             [str(Path("C:/Program Files/Microsoft/Edge/msedge.exe"))],
         )
-        _read_file_endpoint.assert_called_once_with("D:/EdgeProfile")
+
+        explicit_browser = EdgeBrowser(
+            BrowserConfig(
+                user_data_dir="D:/EdgeProfile",
+                profile_name="Profile 1",
+            ),
+            SearchConfig(),
+            sleeper=lambda _: None,
+        )
+
+        explicit_endpoint = explicit_browser._launch()
+
+        self.assertEqual(explicit_endpoint.address, "127.0.0.1:9222")
+        self.assertEqual(
+            popen.call_args.args[0],
+            [
+                str(Path("C:/Program Files/Microsoft/Edge/msedge.exe")),
+                "--profile-directory=Profile 1",
+                "--user-data-dir=D:/EdgeProfile",
+            ],
+        )
+        self.assertEqual(_read_file_endpoint.call_count, 2)
 
 if __name__ == "__main__":
     unittest.main()

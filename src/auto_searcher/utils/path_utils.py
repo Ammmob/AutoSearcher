@@ -1,6 +1,5 @@
 """Resolve paths consistently in source and packaged executions."""
 
-import json
 import os
 import sys
 from pathlib import Path
@@ -43,34 +42,6 @@ def default_edge_user_data_dir() -> Path:
     return (
         Path(local_app_data).expanduser() / "Microsoft" / "Edge" / "User Data"
     ).resolve()
-
-
-def detect_edge_profile_name(user_data_dir: Path) -> str:
-    """Return Edge's most recently used profile, or ``Default`` as a fallback."""
-    local_state_path = user_data_dir / "Local State"
-    try:
-        local_state = json.loads(local_state_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
-        return "Default"
-
-    profile_state = local_state.get("profile")
-    if not isinstance(profile_state, dict):
-        return "Default"
-
-    candidates = [profile_state.get("last_used")]
-    last_active_profiles = profile_state.get("last_active_profiles")
-    if isinstance(last_active_profiles, list):
-        candidates.extend(last_active_profiles)
-
-    for candidate in candidates:
-        if not isinstance(candidate, str) or not candidate.strip():
-            continue
-        profile_name = candidate.strip()
-        if Path(profile_name).name != profile_name:
-            continue
-        if (user_data_dir / profile_name).is_dir():
-            return profile_name
-    return "Default"
 
 
 def default_topic_cache_dir() -> Path:

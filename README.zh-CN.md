@@ -28,7 +28,7 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 - 每个在线数据源拥有独立的当日缓存。
 - 仅在所有在线来源均无结果时启用本地保险话题。
 - 可以启动新的 Edge，或接管已启用远程调试的 Edge。
-- 自动解析当前 Windows 用户的 Edge 数据目录和最近使用的配置文件。
+- 使用当前 Windows 用户的 Edge 数据目录自动发现 CDP 端点。
 - 将浏览器交互、数据源访问、缓存和流程协调拆分为独立组件。
 - 提供目标机器无需安装 Python 的 Windows 便携 ZIP。
 
@@ -165,13 +165,10 @@ sources:
 | 字段 | 说明 |
 | --- | --- |
 | `type` | 浏览器实现，目前仅支持 `edge`。 |
-| `user_data_dir` | Edge 用户数据根目录；省略时使用 `%LOCALAPPDATA%\Microsoft\Edge\User Data`。 |
-| `profile_name` | `Default`、`Profile 1` 等配置目录；省略时读取 Edge 最近使用的配置。 |
+| `user_data_dir` | 可选的 `--user-data-dir` 启动参数；省略后仍使用 Edge 默认目录发现端点。 |
+| `profile_name` | 可选的 `--profile-directory` 启动参数，例如 `Default` 或 `Profile 1`。 |
 | `debugger_address` | `127.0.0.1:9222` 等明确地址；省略时实时发现，设为 `null` 时跳过接管。 |
 | `page_timeout_seconds` | 页面跳转与元素等待超时。 |
-
-省略 `profile_name` 时，AutoSearcher 从选定用户数据目录的 `Local State` 中
-读取最近使用的配置；无法获得有效值时回退到 `Default`。
 
 ### 搜索
 
@@ -212,10 +209,11 @@ sources:
 | 省略 `debugger_address` | 通过实时 HTTP DevTools 监听端口发现 Edge 131，或通过 `DevToolsActivePort` 中记录的浏览器 WebSocket 验证 Edge 151。 |
 | `debugger_address: host:port` | 只尝试配置中的固定地址。 |
 | `debugger_address: null` | 跳过接管并启动新浏览器。 |
-| 没有可接管的 Edge | 不传任何命令行参数启动 Edge，并等待其生成 `DevToolsActivePort`。 |
+| 没有可接管的 Edge | 启动 Edge，并等待其生成 `DevToolsActivePort`。 |
 
-AutoSearcher 启动 Edge 时不传配置文件、用户数据目录或远程调试端口。远程调试必须
-事先在浏览器中启用。
+AutoSearcher 启动 Edge 时不会添加远程调试端口。只有在 YAML 中明确填写对应值时，
+才会传入 `--profile-directory` 和 `--user-data-dir`；省略的值不会作为启动参数。
+远程调试必须事先在浏览器中启用。
 
 Edge 151 需要先在 `edge://inspect` 中启用一次远程调试。之后 AutoSearcher
 读取浏览器级 WebSocket 地址，通过 CDP 创建独立标签页；接管运行结束时只关闭

@@ -8,6 +8,7 @@ from collections.abc import Callable
 
 from auto_searcher.schemas import SearchConfig
 
+from .connection import CdpError
 from .page import CdpPage
 
 
@@ -51,6 +52,26 @@ class CdpInteraction:
         (() => {
             const element = document.querySelector('[name="q"]');
             return element !== null && element.value === '';
+        })()
+    """
+    SEARCH_BUTTON_EXPRESSION = """
+        (() => {
+            const element = document.querySelector(
+                '#sb_form_go, button[type="submit"], input[type="submit"]'
+            );
+            if (!element || element.disabled) return null;
+            const style = getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            if (
+                style.visibility === 'hidden' ||
+                style.display === 'none' ||
+                rect.width <= 0 ||
+                rect.height <= 0
+            ) return null;
+            return {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            };
         })()
     """
     PAGE_METRICS_EXPRESSION = """
@@ -107,7 +128,7 @@ class CdpInteraction:
             self._sleep(self._typing_delay(keyword, index, character))
 
         self._sleep(self._rng.uniform(0.5, 1.0))
-        self._press_key("Enter", "Enter", 13)
+        self._submit_search(previous_url)
         expected_previous_url = json.dumps(previous_url, ensure_ascii=False)
         self._page.wait_for_value(
             "location.pathname.includes('/search') && "
@@ -196,6 +217,21 @@ class CdpInteraction:
         if focused is not True:
             raise RuntimeError("搜索框无法获得输入焦点")
 
+    def _submit_search(self, previous_url: str) -> None:
+        self._press_key("Enter", "Enter", 13, text="\r")
+        self._sleep(self._rng.uniform(0.4, 0.7))
+        try:
+            current_url = str(self._page.evaluate("location.href"))
+        except CdpError:
+            return
+        if current_url != previous_url:
+            return
+
+        position = self._page.evaluate(self.SEARCH_BUTTON_EXPRESSION)
+        if not isinstance(position, dict):
+            raise RuntimeError("回车未触发搜索，且没有找到搜索按钮")
+        self._move_and_click(float(position["x"]), float(position["y"]))
+
     def _scroll_to_top(self) -> None:
         metrics = self._page_metrics()
         remaining = round(metrics["y"])
@@ -205,16 +241,30 @@ class CdpInteraction:
             remaining -= distance
             self._sleep(self._rng.uniform(0.05, 0.15))
 
-    def _press_key(self, key: str, code: str, virtual_key: int) -> None:
-        for event_type in ("rawKeyDown", "keyUp"):
+    def _press_key(
+        self,
+        key: str,
+        code: str,
+        virtual_key: int,
+        text: str | None = None,
+    ) -> None:
+        event_types = ["rawKeyDown"]
+        if text is not None:
+            event_types.append("char")
+        event_types.append("keyUp")
+        for event_type in event_types:
+            params: dict[str, object] = {
+                "type": event_type,
+                "key": key,
+                "code": code,
+                "windowsVirtualKeyCode": virtual_key,
+            }
+            if event_type == "char" and text is not None:
+                params["text"] = text
+                params["unmodifiedText"] = text
             self._page.command(
                 "Input.dispatchKeyEvent",
-                {
-                    "type": event_type,
-                    "key": key,
-                    "code": code,
-                    "windowsVirtualKeyCode": virtual_key,
-                },
+                params,
             )
 
     def _scroll(self, metrics: dict[str, float], distance: int) -> None:

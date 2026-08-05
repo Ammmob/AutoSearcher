@@ -90,10 +90,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "check":
             config_path = resolve_configured_path(args.config, Path.cwd())
             print(f"配置有效: {config_path}")
-            print(f"Edge 用户目录: {config.browser.user_data_dir}")
-            print(f"Edge 配置文件: {config.browser.profile_name}")
+            print(f"Edge 用户目录参数: {config.browser.user_data_dir or '未配置'}")
+            print(f"Edge 配置文件参数: {config.browser.profile_name or '未配置'}")
             debugger_address = config.browser.debugger_address
-            if config.browser.auto_detect_debugger and config.browser.user_data_dir:
+            if config.browser.auto_detect_debugger:
                 cdp_endpoint = EdgeBrowser.detect_endpoint(config.browser)
                 if cdp_endpoint is not None:
                     debugger_address = f"{cdp_endpoint.address}（CDP WebSocket）"

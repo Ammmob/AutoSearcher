@@ -30,7 +30,7 @@ It contains no account, sign-in, reward, or points logic.
 - Stores an independent daily cache for each online source.
 - Uses a local fallback topic file only when every online source returns no data.
 - Starts a new Edge session or attaches to a running debuggable Edge instance.
-- Resolves the current Windows Edge user-data directory and last-used profile.
+- Uses the current Windows Edge data directory to discover CDP endpoints.
 - Encapsulates browser interaction, source access, caching, and orchestration.
 - Ships as a portable Windows ZIP that does not require Python on the target PC.
 
@@ -168,13 +168,10 @@ sources:
 | Field | Description |
 | --- | --- |
 | `type` | Browser implementation. Only `edge` is currently available. |
-| `user_data_dir` | Edge user-data root. Omit it to use `%LOCALAPPDATA%\Microsoft\Edge\User Data`. |
-| `profile_name` | Profile directory such as `Default` or `Profile 1`. Omit it to read Edge's last-used profile. |
+| `user_data_dir` | Optional `--user-data-dir` launch argument. When omitted, the default Edge directory is still used for endpoint discovery. |
+| `profile_name` | Optional `--profile-directory` launch argument such as `Default` or `Profile 1`. |
 | `debugger_address` | Explicit address such as `127.0.0.1:9222`. Omit it for live discovery, or set it to `null` to skip attachment. |
 | `page_timeout_seconds` | Page navigation and element wait timeout. |
-
-When `profile_name` is omitted, AutoSearcher reads `Local State` from the selected
-user-data root and falls back to `Default` if no valid last-used profile is found.
 
 ### Search
 
@@ -217,10 +214,12 @@ line; blank lines and lines beginning with `#` are ignored.
 | `debugger_address` omitted | Detect Edge 131 through live HTTP DevTools listeners, or validate Edge 151 through the browser WebSocket recorded in `DevToolsActivePort`. |
 | `debugger_address: host:port` | Try only the configured endpoint. |
 | `debugger_address: null` | Skip attachment and start a new browser. |
-| No attachable Edge found | Start Edge without command-line arguments and wait for its `DevToolsActivePort`. |
+| No attachable Edge found | Start Edge and wait for its `DevToolsActivePort`. |
 
-AutoSearcher does not pass a profile, user-data directory, or remote-debugging
-port when it starts Edge. Remote debugging must already be enabled in the browser.
+AutoSearcher never adds a remote-debugging port when it starts Edge. It passes
+`--profile-directory` and `--user-data-dir` only when their corresponding values
+were explicitly written in YAML; omitted values are not passed.
+Remote debugging must already be enabled in the browser.
 
 For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
 then reads the browser-level WebSocket path, opens a dedicated tab through CDP,

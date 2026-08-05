@@ -221,6 +221,8 @@ class FakeCdpPage:
             CdpInteraction.SEARCH_BOX_EMPTY_EXPRESSION,
         }:
             return True
+        if expression == CdpInteraction.SEARCH_BUTTON_EXPRESSION:
+            return {"x": 1100, "y": 100}
         return {
             "height": 1800,
             "viewport": 800,
@@ -286,6 +288,17 @@ class CdpInteractionTests(unittest.TestCase):
         ]
         self.assertEqual(len(select_all_events), 2)
         self.assertTrue(all("commands" not in event for event in select_all_events))
+        enter_character_events = [
+            params
+            for method, params in page.commands
+            if method == "Input.dispatchKeyEvent"
+            and params.get("key") == "Enter"
+            and params.get("type") == "char"
+        ]
+        self.assertEqual(len(enter_character_events), 2)
+        self.assertTrue(
+            all(event.get("text") == "\r" for event in enter_character_events)
+        )
 
 
 if __name__ == "__main__":

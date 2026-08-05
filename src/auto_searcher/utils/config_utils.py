@@ -8,9 +8,7 @@ import yaml
 from auto_searcher.schemas import AppConfig, BrowserConfig, SearchConfig, SourcesConfig
 from auto_searcher.utils.path_utils import (
     PathResolutionError,
-    default_edge_user_data_dir,
     default_topic_cache_dir,
-    detect_edge_profile_name,
     resolve_configured_path,
 )
 
@@ -84,14 +82,15 @@ def load_config(path: str | Path) -> AppConfig:
                 config_path.parent,
             )
         else:
-            user_data_path = default_edge_user_data_dir()
+            user_data_path = None
     except PathResolutionError as exc:
         raise ConfigError(str(exc)) from exc
 
-    if "profile_name" not in browser_raw:
-        profile_name = detect_edge_profile_name(user_data_path)
+    configured_profile = browser_raw.get("profile_name")
+    if configured_profile is None:
+        profile_name = None
     else:
-        profile_name = str(browser_raw["profile_name"]).strip()
+        profile_name = str(configured_profile).strip()
         if not profile_name:
             raise ConfigError("browser.profile_name 不能为空")
 
@@ -104,7 +103,7 @@ def load_config(path: str | Path) -> AppConfig:
 
     browser = BrowserConfig(
         type=browser_type,
-        user_data_dir=str(user_data_path),
+        user_data_dir=str(user_data_path) if user_data_path else None,
         profile_name=profile_name,
         debugger_address=configured_debugger,
         auto_detect_debugger=auto_detect_debugger,
