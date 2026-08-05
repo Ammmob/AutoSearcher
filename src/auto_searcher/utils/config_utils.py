@@ -94,19 +94,10 @@ def load_config(path: str | Path) -> AppConfig:
         if not profile_name:
             raise ConfigError("browser.profile_name 不能为空")
 
-    auto_detect_debugger = "debugger_address" not in browser_raw
-    configured_debugger = browser_raw.get("debugger_address")
-    if configured_debugger is not None:
-        configured_debugger = str(configured_debugger).strip()
-        if not configured_debugger:
-            raise ConfigError("browser.debugger_address 不能为空字符串")
-
     browser = BrowserConfig(
         type=browser_type,
         user_data_dir=str(user_data_path) if user_data_path else None,
         profile_name=profile_name,
-        debugger_address=configured_debugger,
-        auto_detect_debugger=auto_detect_debugger,
         page_timeout_seconds=_positive_float(
             browser_raw.get("page_timeout_seconds", 20),
             "browser.page_timeout_seconds",

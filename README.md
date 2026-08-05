@@ -170,7 +170,6 @@ sources:
 | `type` | Browser implementation. Only `edge` is currently available. |
 | `user_data_dir` | Optional `--user-data-dir` launch argument. When omitted, the default Edge directory is still used for endpoint discovery. |
 | `profile_name` | Optional `--profile-directory` launch argument such as `Default` or `Profile 1`. |
-| `debugger_address` | Explicit address such as `127.0.0.1:9222`; its port is also passed when starting Edge. Omit it for live discovery and parameter-free remote debugging. |
 | `page_timeout_seconds` | Page navigation and element wait timeout. |
 
 ### Search
@@ -209,16 +208,16 @@ line; blank lines and lines beginning with `#` are ignored.
 
 ## 🌐 Edge Sessions
 
-| Configuration | Behavior |
+| Environment | Behavior |
 | --- | --- |
-| `debugger_address` omitted | Detect Edge 131 through live HTTP DevTools listeners, or validate Edge 151 through the browser WebSocket recorded in `DevToolsActivePort`. |
-| `debugger_address: host:port` | Try only the configured endpoint. |
-| `debugger_address: null` | Skip attachment and start a new browser. |
-| No attachable Edge found | Start Edge and wait for its `DevToolsActivePort`. |
+| An attachable Edge is running | Discover CDP from `DevToolsActivePort` or Edge's live listening ports. |
+| `edge://inspect/#remote-debugging` is enabled | Start Edge without a debugging-port argument and let the browser manage remote debugging. |
+| An older Edge without that switch | Start Edge with the internal compatibility port `9222`. |
 
-AutoSearcher passes `--profile-directory`, `--user-data-dir`, and the port from
-`debugger_address` only when their corresponding values were explicitly written
-in YAML. Omitted values are not passed.
+The debugging port is not configurable. AutoSearcher reads the browser-wide
+state corresponding to `edge://inspect/#remote-debugging` from `Local State`
+and selects the launch mode automatically. `--profile-directory` and
+`--user-data-dir` are still passed only when explicitly configured in YAML.
 
 For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
 then reads the browser-level WebSocket path, opens a dedicated tab through CDP,

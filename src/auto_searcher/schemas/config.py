@@ -8,8 +8,6 @@ class BrowserConfig:
     type: str = "edge"
     user_data_dir: str | None = None
     profile_name: str | None = None
-    debugger_address: str | None = None
-    auto_detect_debugger: bool = False
     page_timeout_seconds: float = 20.0
 
 

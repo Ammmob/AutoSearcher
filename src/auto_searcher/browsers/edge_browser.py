@@ -1,6 +1,8 @@
 """Microsoft Edge browser implementation and runtime helpers."""
 
 import csv
+import json
+import logging
 import os
 import subprocess
 from io import StringIO
@@ -10,8 +12,12 @@ from auto_searcher.utils.path_utils import default_edge_user_data_dir
 
 from .chromium_browser import ChromiumBrowser
 
+logger = logging.getLogger(__name__)
+
 
 class EdgeBrowser(ChromiumBrowser):
+    _LEGACY_DEBUGGING_ADDRESS = "127.0.0.1:9222"
+
     @property
     def name(self) -> str:
         return self._name()
@@ -29,16 +35,33 @@ class EdgeBrowser(ChromiumBrowser):
         if self._browser_config.user_data_dir:
             command.append(f"--user-data-dir={self._browser_config.user_data_dir}")
 
-        debugger_address = self._browser_config.debugger_address
-        if debugger_address:
-            try:
-                port = int(debugger_address.rsplit(":", maxsplit=1)[-1])
-            except ValueError as exc:
-                raise RuntimeError("远程调试地址端口无效") from exc
-            if not 1 <= port <= 65535:
-                raise RuntimeError("远程调试地址端口无效")
-            command.append(f"--remote-debugging-port={port}")
-        return command, debugger_address
+        if self._browser_manages_remote_debugging():
+            logger.info("检测到 Edge 内置远程调试已启用，不传入调试端口")
+            return command, None
+
+        logger.info("未检测到 Edge 内置远程调试，使用兼容调试端口 9222")
+        command.append("--remote-debugging-port=9222")
+        return command, self._LEGACY_DEBUGGING_ADDRESS
+
+    def _browser_manages_remote_debugging(self) -> bool:
+        user_data_dir = (
+            Path(self._browser_config.user_data_dir)
+            if self._browser_config.user_data_dir
+            else self._default_user_data_dir()
+        )
+        local_state = user_data_dir / "Local State"
+        try:
+            data = json.loads(local_state.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return False
+
+        devtools = data.get("devtools")
+        if not isinstance(devtools, dict):
+            return False
+        remote_debugging = devtools.get("remote_debugging")
+        if not isinstance(remote_debugging, dict):
+            return False
+        return remote_debugging.get("user-enabled") is True
 
     @staticmethod
     def _find_executable() -> Path | None:

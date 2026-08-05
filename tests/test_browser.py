@@ -1,5 +1,6 @@
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
 from auto_searcher.browsers import Browser, ChromiumBrowser, EdgeBrowser
@@ -50,14 +51,12 @@ class EdgeBrowserTests(unittest.TestCase):
         _default_user_data_dir,
         is_supported_endpoint,
     ) -> None:
-        config = BrowserConfig(
-            auto_detect_debugger=True,
-        )
+        config = BrowserConfig()
 
         endpoint = EdgeBrowser.detect_endpoint(config)
 
         self.assertEqual(endpoint.address, "127.0.0.1:9222")
-        _read_endpoint.assert_called_once_with(Path("D:/DefaultEdgeData"), None)
+        _read_endpoint.assert_called_once_with(Path("D:/DefaultEdgeData"))
         is_supported_endpoint.assert_called_once()
 
     @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
@@ -86,7 +85,6 @@ class EdgeBrowserTests(unittest.TestCase):
     ) -> None:
         config = BrowserConfig(
             user_data_dir="D:/EdgeProfile",
-            auto_detect_debugger=True,
         )
 
         endpoint = EdgeBrowser.detect_endpoint(config)
@@ -108,8 +106,10 @@ class EdgeBrowserTests(unittest.TestCase):
             "ws://127.0.0.1:9222/devtools/browser/test",
         ),
     )
-    def test_launch_only_passes_explicit_user_arguments(
+    @patch.object(EdgeBrowser, "_browser_manages_remote_debugging", return_value=False)
+    def test_legacy_launch_uses_internal_debugging_port(
         self,
+        _managed_debugging,
         _read_file_endpoint,
         _find_executable,
         _edge_running,
@@ -117,9 +117,7 @@ class EdgeBrowserTests(unittest.TestCase):
         _is_supported_endpoint,
     ) -> None:
         browser = EdgeBrowser(
-            BrowserConfig(
-                debugger_address="127.0.0.1:9222",
-            ),
+            BrowserConfig(),
             SearchConfig(),
             sleeper=lambda _: None,
         )
@@ -153,11 +151,13 @@ class EdgeBrowserTests(unittest.TestCase):
                 str(Path("C:/Program Files/Microsoft/Edge/msedge.exe")),
                 "--profile-directory=Profile 1",
                 "--user-data-dir=D:/EdgeProfile",
+                "--remote-debugging-port=9222",
             ],
         )
         self.assertEqual(_read_file_endpoint.call_count, 2)
 
-    def test_edge_launch_command_omits_all_unconfigured_arguments(self) -> None:
+    @patch.object(EdgeBrowser, "_browser_manages_remote_debugging", return_value=True)
+    def test_modern_edge_launch_omits_debugging_port(self, _managed_debugging) -> None:
         browser = EdgeBrowser(BrowserConfig(), SearchConfig())
         executable = Path("C:/Program Files/Microsoft/Edge/msedge.exe")
 
@@ -165,6 +165,20 @@ class EdgeBrowserTests(unittest.TestCase):
 
         self.assertEqual(command, [str(executable)])
         self.assertIsNone(expected_address)
+
+    def test_detects_browser_managed_debugging_from_local_state(self) -> None:
+        with TemporaryDirectory() as directory:
+            user_data_dir = Path(directory)
+            (user_data_dir / "Local State").write_text(
+                '{"devtools":{"remote_debugging":{"user-enabled":true}}}',
+                encoding="utf-8",
+            )
+            browser = EdgeBrowser(
+                BrowserConfig(user_data_dir=str(user_data_dir)),
+                SearchConfig(),
+            )
+
+            self.assertTrue(browser._browser_manages_remote_debugging())
 
 if __name__ == "__main__":
     unittest.main()

@@ -92,15 +92,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"配置有效: {config_path}")
             print(f"Edge 用户目录参数: {config.browser.user_data_dir or '未配置'}")
             print(f"Edge 配置文件参数: {config.browser.profile_name or '未配置'}")
-            debugger_address = config.browser.debugger_address
-            if config.browser.auto_detect_debugger:
-                cdp_endpoint = EdgeBrowser.detect_endpoint(config.browser)
-                if cdp_endpoint is not None:
-                    debugger_address = f"{cdp_endpoint.address}（CDP WebSocket）"
-                debugger_address = debugger_address or "自动检测（当前未发现）"
-            elif debugger_address is None:
-                debugger_address = "已禁用"
-            print(f"远程调试地址: {debugger_address}")
+            cdp_endpoint = EdgeBrowser.detect_endpoint(config.browser)
+            endpoint_display = (
+                f"{cdp_endpoint.address}（CDP WebSocket）"
+                if cdp_endpoint is not None
+                else "自动检测（当前未发现）"
+            )
+            print(f"远程调试地址: {endpoint_display}")
             print(f"数据源缓存目录: {config.sources.cache_dir}")
             return 0
 

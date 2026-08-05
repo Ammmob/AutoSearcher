@@ -66,23 +66,6 @@ class PathTests(unittest.TestCase):
 
         self.assertEqual(config.browser.user_data_dir, str(user_data_dir.resolve()))
         self.assertIsNone(config.browser.profile_name)
-        self.assertTrue(config.browser.auto_detect_debugger)
-
-    def test_null_debugger_address_disables_automatic_detection(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.yaml"
-            config_path.write_text(
-                "browser:\n"
-                "  debugger_address: null\n"
-                "search: {}\n"
-                "sources: {}\n",
-                encoding="utf-8",
-            )
-
-            config = load_config(config_path)
-
-        self.assertIsNone(config.browser.debugger_address)
-        self.assertFalse(config.browser.auto_detect_debugger)
 
     def test_configured_edge_profile_is_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

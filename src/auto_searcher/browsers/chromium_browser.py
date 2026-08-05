@@ -72,30 +72,16 @@ class ChromiumBrowser(Browser):
 
     @classmethod
     def detect_endpoint(cls, browser_config: BrowserConfig) -> Endpoint | None:
-        should_attach = browser_config.auto_detect_debugger or bool(
-            browser_config.debugger_address
-        )
-        if not should_attach:
-            return None
-
         candidates: list[Endpoint] = []
         endpoint_dir = browser_config.user_data_dir or cls._default_user_data_dir()
-        file_endpoint = read_active_endpoint(
-            endpoint_dir,
-            browser_config.debugger_address,
-        )
+        file_endpoint = read_active_endpoint(endpoint_dir)
         if file_endpoint is not None:
             candidates.append(file_endpoint)
 
-        if browser_config.debugger_address:
-            http_endpoint = read_http_endpoint(browser_config.debugger_address)
+        for address in cls._listening_addresses():
+            http_endpoint = read_http_endpoint(address)
             if http_endpoint is not None:
                 candidates.append(http_endpoint)
-        elif browser_config.auto_detect_debugger:
-            for address in cls._listening_addresses():
-                http_endpoint = read_http_endpoint(address)
-                if http_endpoint is not None:
-                    candidates.append(http_endpoint)
 
         checked: set[str] = set()
         for endpoint in candidates:
