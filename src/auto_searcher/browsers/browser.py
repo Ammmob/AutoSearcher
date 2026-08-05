@@ -11,10 +11,10 @@ from types import TracebackType
 from auto_searcher.schemas import BrowserConfig, SearchConfig
 from auto_searcher.utils.path_utils import default_edge_user_data_dir
 
-from .backend import Backend, CdpBackend
 from .cdp import (
     CdpConnection,
     CdpError,
+    CdpSession,
     Endpoint,
     read_active_endpoint,
     read_http_endpoint,
@@ -30,26 +30,26 @@ logger = logging.getLogger(__name__)
 
 
 class Browser(ABC):
-    def __init__(self, backend: Backend | None = None) -> None:
-        self._backend = backend
-
     @property
     @abstractmethod
     def name(self) -> str:
         raise NotImplementedError
 
+    @abstractmethod
     def open(self) -> None:
-        self._require_backend().open()
+        raise NotImplementedError
 
+    @abstractmethod
     def search(self, keyword: str) -> None:
-        self._require_backend().search(keyword)
+        raise NotImplementedError
 
+    @abstractmethod
     def browse_results(self) -> None:
-        self._require_backend().browse_results()
+        raise NotImplementedError
 
+    @abstractmethod
     def close(self) -> None:
-        if self._backend is not None:
-            self._backend.close()
+        raise NotImplementedError
 
     def __enter__(self) -> "Browser":
         self.open()
@@ -63,12 +63,6 @@ class Browser(ABC):
     ) -> None:
         self.close()
 
-    def _require_backend(self) -> Backend:
-        if self._backend is None:
-            raise RuntimeError("浏览器后端尚未初始化")
-        return self._backend
-
-
 class EdgeBrowser(Browser):
     DEFAULT_DEBUGGER_PORT = 9222
 
@@ -76,13 +70,13 @@ class EdgeBrowser(Browser):
         self,
         browser_config: BrowserConfig,
         search_config: SearchConfig,
-        backend: Backend | None = None,
+        session: CdpSession | None = None,
         rng: random.Random | None = None,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
-        super().__init__(backend)
         self._browser_config = browser_config
         self._search_config = search_config
+        self._session = session
         self._rng = rng
         self._sleep = sleeper
 
@@ -92,12 +86,12 @@ class EdgeBrowser(Browser):
 
     def open(self) -> None:
         logger.info("使用浏览器: %s", self.name)
-        if self._backend is None:
+        if self._session is None:
             endpoint = self.detect_endpoint(self._browser_config)
             owns_browser = endpoint is None
             if endpoint is None:
                 endpoint = self._launch()
-            self._backend = CdpBackend(
+            self._session = CdpSession(
                 endpoint,
                 self._search_config,
                 self._browser_config.page_timeout_seconds,
@@ -105,7 +99,22 @@ class EdgeBrowser(Browser):
                 rng=self._rng,
                 sleeper=self._sleep,
             )
-        super().open()
+        self._session.open()
+
+    def search(self, keyword: str) -> None:
+        self._require_session().search(keyword)
+
+    def browse_results(self) -> None:
+        self._require_session().browse_results()
+
+    def close(self) -> None:
+        if self._session is not None:
+            self._session.close()
+
+    def _require_session(self) -> CdpSession:
+        if self._session is None:
+            raise RuntimeError("CDP 会话尚未初始化")
+        return self._session
 
     @classmethod
     def detect_endpoint(cls, browser_config: BrowserConfig) -> Endpoint | None:

@@ -1,15 +1,16 @@
-"""Browser backend contract and browser-independent CDP implementation."""
+"""Browser-independent CDP session and search workflow."""
 
 import logging
 import random
 import time
-from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 from auto_searcher.schemas import SearchConfig
 
-from .cdp import CdpConnection, CdpError, CdpPage, Endpoint
-from .interaction import CdpInteraction, Interaction
+from .connection import CdpConnection, CdpError
+from .endpoint import Endpoint
+from .interaction import CdpInteraction
+from .page import CdpPage
 
 logger = logging.getLogger(__name__)
 
@@ -28,25 +29,7 @@ NAVIGATOR_OVERRIDE_SCRIPT = """
 """
 
 
-class Backend(ABC):
-    @abstractmethod
-    def open(self) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def search(self, keyword: str) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def browse_results(self) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def close(self) -> None:
-        raise NotImplementedError
-
-
-class CdpBackend(Backend):
+class CdpSession:
     def __init__(
         self,
         endpoint: Endpoint,
@@ -56,7 +39,7 @@ class CdpBackend(Backend):
         rng: random.Random | None = None,
         sleeper: Callable[[float], None] = time.sleep,
         connection: CdpConnection | None = None,
-        interaction: Interaction | None = None,
+        interaction: CdpInteraction | None = None,
     ) -> None:
         self._endpoint = endpoint
         self._search_config = search_config
@@ -149,7 +132,7 @@ class CdpBackend(Backend):
             raise RuntimeError("浏览器尚未打开")
         return self._page
 
-    def _require_interaction(self) -> Interaction:
+    def _require_interaction(self) -> CdpInteraction:
         if self._interaction is None:
             raise RuntimeError("搜索交互尚未初始化")
         return self._interaction

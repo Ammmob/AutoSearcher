@@ -51,8 +51,8 @@ flowchart LR
     Gather --> Runner[AutoSearcher]
     Runner --> Browser[Browser 接口]
     Browser --> Edge[EdgeBrowser]
-    Edge --> Backend[CdpBackend]
-    Backend --> CDP[通用 CDP 层]
+    Edge --> Session[CdpSession]
+    Session --> CDP[通用 CDP 层]
     CDP --> Search[搜索与浏览]
 ```
 
@@ -60,7 +60,7 @@ flowchart LR
 
 - `AutoSearcher` 通过 `Browser` 接口协调完整运行流程。
 - `EdgeBrowser` 负责 Edge 的发现、校验、启动和生命周期策略。
-- `CdpBackend` 通过通用 `Endpoint` 控制任意兼容浏览器。
+- `CdpSession` 通过通用 `Endpoint` 控制任意兼容浏览器。
 - `CdpInteraction` 通过 CDP 实现输入、点击和结果页浏览。
 - `TopicGather` 负责来源容错、聚合、随机排序、去重和保险话题切换。
 - `Source`、`HttpSource` 和 `CachedSource` 分离来源行为与缓存行为。

@@ -7,13 +7,13 @@ from unittest.mock import Mock, patch
 from auto_searcher.browsers.cdp import (
     CdpConnection,
     CdpError,
+    CdpInteraction,
     CdpPage,
+    CdpSession,
     Endpoint,
     read_active_endpoint,
     read_http_endpoint,
 )
-from auto_searcher.browsers.backend import CdpBackend
-from auto_searcher.browsers.interaction import CdpInteraction, Interaction
 from auto_searcher.schemas import BrowserConfig, SearchConfig
 
 
@@ -143,8 +143,8 @@ class EndpointTests(unittest.TestCase):
             self.assertIsNone(read_active_endpoint(user_data_dir))
 
 
-class CdpBackendTests(unittest.TestCase):
-    @patch("auto_searcher.browsers.backend.CdpPage")
+class CdpSessionTests(unittest.TestCase):
+    @patch("auto_searcher.browsers.cdp.session.CdpPage")
     def test_open_creates_and_prepares_an_isolated_tab(self, cdp_page) -> None:
         connection = Mock()
         connection.command.side_effect = [
@@ -153,7 +153,7 @@ class CdpBackendTests(unittest.TestCase):
             {"sessionId": "session-1"},
         ]
         page = cdp_page.return_value
-        backend = CdpBackend(
+        session = CdpSession(
             Endpoint(
                 "127.0.0.1:9222",
                 "ws://127.0.0.1:9222/devtools/browser/test",
@@ -164,7 +164,7 @@ class CdpBackendTests(unittest.TestCase):
             interaction=Mock(),
         )
 
-        backend.open()
+        session.open()
 
         connection.open.assert_called_once_with()
         connection.command.assert_any_call("Browser.getVersion")
@@ -180,7 +180,7 @@ class CdpBackendTests(unittest.TestCase):
         page.navigate.assert_called_once_with("https://www.bing.com")
         page.activate.assert_called_once_with()
 
-    @patch("auto_searcher.browsers.backend.CdpPage")
+    @patch("auto_searcher.browsers.cdp.session.CdpPage")
     def test_owned_browser_closes_the_whole_instance(self, cdp_page) -> None:
         connection = Mock()
         connection.command.side_effect = [
@@ -189,7 +189,7 @@ class CdpBackendTests(unittest.TestCase):
             {"sessionId": "session-1"},
             {},
         ]
-        backend = CdpBackend(
+        session = CdpSession(
             Endpoint(
                 "127.0.0.1:9222",
                 "ws://127.0.0.1:9222/devtools/browser/test",
@@ -200,9 +200,9 @@ class CdpBackendTests(unittest.TestCase):
             connection=connection,
             interaction=Mock(),
         )
-        backend.open()
+        session.open()
 
-        backend.close()
+        session.close()
 
         connection.command.assert_called_with("Browser.close")
         cdp_page.return_value.close.assert_not_called()
@@ -248,9 +248,6 @@ class FakeCdpPage:
 
 
 class CdpInteractionTests(unittest.TestCase):
-    def test_implementation_inherits_interface(self) -> None:
-        self.assertTrue(issubclass(CdpInteraction, Interaction))
-
     def test_consecutive_searches_restore_search_box_before_selecting(self) -> None:
         page = FakeCdpPage()
         interaction = CdpInteraction(

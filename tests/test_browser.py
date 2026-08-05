@@ -3,18 +3,17 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from auto_searcher.browsers import Browser, EdgeBrowser
-from auto_searcher.browsers.backend import Backend
-from auto_searcher.browsers.cdp import Endpoint
+from auto_searcher.browsers.cdp import CdpSession, Endpoint
 from auto_searcher.schemas import BrowserConfig, SearchConfig
 
 
 class BrowserTests(unittest.TestCase):
-    def test_edge_browser_inherits_browser_and_holds_backend(self) -> None:
-        backend = Mock(spec=Backend)
+    def test_edge_browser_inherits_browser_and_holds_cdp_session(self) -> None:
+        session = Mock(spec=CdpSession)
         browser = EdgeBrowser(
             BrowserConfig(),
             SearchConfig(),
-            backend=backend,
+            session=session,
         )
 
         browser.open()
@@ -24,10 +23,10 @@ class BrowserTests(unittest.TestCase):
 
         self.assertIsInstance(browser, Browser)
         self.assertEqual(browser.name, "Edge")
-        backend.open.assert_called_once_with()
-        backend.search.assert_called_once_with("topic")
-        backend.browse_results.assert_called_once_with()
-        backend.close.assert_called_once_with()
+        session.open.assert_called_once_with()
+        session.search.assert_called_once_with("topic")
+        session.browse_results.assert_called_once_with()
+        session.close.assert_called_once_with()
 
 
 class EdgeBrowserTests(unittest.TestCase):

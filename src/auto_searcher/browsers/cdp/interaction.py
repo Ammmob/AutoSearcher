@@ -1,32 +1,17 @@
-"""Search interaction contract and CDP implementation."""
+"""Human-paced search interaction through CDP."""
 
 import json
 import math
 import random
 import time
-from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 from auto_searcher.schemas import SearchConfig
 
-from .cdp import CdpPage
+from .page import CdpPage
 
 
-class Interaction(ABC):
-    @abstractmethod
-    def wait_after_open(self) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def search(self, keyword: str) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def browse_results(self) -> None:
-        raise NotImplementedError
-
-
-class CdpInteraction(Interaction):
+class CdpInteraction:
     WORD_BOUNDARIES = frozenset(" \t-_/,.;:!?，。；：！？、")
     SEARCH_BOX_EXPRESSION = """
         (() => {
