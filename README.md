@@ -4,10 +4,10 @@
 
 Extensible, human-paced web search automation for Windows and Microsoft Edge.
 
-![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![Python 3.11 or newer](https://img.shields.io/badge/python-3.11_or_newer-3776AB.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows)
 ![Browser](https://img.shields.io/badge/Browser-Microsoft%20Edge-0A66C2?logo=microsoftedge)
-![Version](https://img.shields.io/badge/Version-0.1.0-4C8BF5)
+![Release v0.1.0](https://img.shields.io/badge/release-v0.1.0-4C8BF5.svg)
 
 **English** · [简体中文](README.zh-CN.md)
 

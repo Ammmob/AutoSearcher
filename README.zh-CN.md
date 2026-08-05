@@ -4,10 +4,10 @@
 
 面向 Windows 与 Microsoft Edge 的可扩展、自然节奏网页自动搜索工具。
 
-![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![Python 3.11 or newer](https://img.shields.io/badge/python-3.11_or_newer-3776AB.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows)
 ![Browser](https://img.shields.io/badge/Browser-Microsoft%20Edge-0A66C2?logo=microsoftedge)
-![Version](https://img.shields.io/badge/Version-0.1.0-4C8BF5)
+![Release v0.1.0](https://img.shields.io/badge/release-v0.1.0-4C8BF5.svg)
 
 [English](README.md) · **简体中文**
 
@@ -35,17 +35,17 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 - 将浏览器交互、数据源访问、缓存和流程协调拆分为独立组件。
 - 提供目标机器无需安装 Python 的 Windows 便携 ZIP。
 
-## 🧭 工作流程
+## 🧭 How It Works
 
 ```mermaid
 flowchart LR
-    Sources[在线数据源] --> Cache[每日缓存]
+    Sources[Online Sources] --> Cache[Daily Cache]
     Cache --> Gather[TopicGather]
-    Fallback[保险话题] -. 在线来源全部失败 .-> Gather
+    Fallback[Fallback Topics] -. all sources fail .-> Gather
     Gather --> Runner[AutoSearcher]
-    Runner --> Browser[Browser 接口]
+    Runner --> Browser[Browser Interface]
     Browser --> Edge[EdgeBrowser]
-    Edge --> Search[搜索与浏览]
+    Edge --> Search[Search and Browse]
 ```
 
 核心依赖统一指向小型接口：
@@ -90,10 +90,10 @@ auto-searcher
 源码运行要求 Python 3.11 或更高版本。项目采用标准 `src` 布局，开发时建议
 使用可编辑安装。
 
-## 🖥️ 命令行
+## 🖥️ CLI
 
 ```text
-auto-searcher [选项] [{run,check,topics}]
+auto-searcher [options] [{run,check,topics}]
 ```
 
 | 命令 | 作用 |
@@ -270,7 +270,7 @@ dist\AutoSearcher-portable-win-x64.zip
 构建过程会创建隔离的 `.build-venv`、运行 PyInstaller、复制运行配置与文档、
 验证打包后的可执行文件，然后生成 ZIP。
 
-## 🗺️ 开发计划
+## 🗺️ Roadmap
 
 - [ ] 支持 Edge 151 WebSocket/CDP 会话接管。
 - [ ] 引入与传输方式无关的浏览器会话层。
