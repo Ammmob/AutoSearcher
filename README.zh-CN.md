@@ -18,8 +18,7 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 或奖励逻辑。
 
 > [!IMPORTANT]
-> Edge 151 WebSocket/CDP 支持目前属于实验功能，仍需在更多机器上验证。
-> 使用普通 Edge 151 用户配置前，请先在 `edge://inspect` 中启用远程调试。
+> 使用浏览器管理的调试会话前，请先在 `edge://inspect` 中启用远程调试。
 
 ## ✨ 功能亮点
 
@@ -34,39 +33,26 @@ Edge 中逐条搜索。浏览器交互采用逐字输入、短暂停留、鼠标
 
 ## 🗺️ 开发计划
 
-- [x] 增加实验性的 Edge 151 WebSocket/CDP 会话接管。
-- [x] 使用一套 CDP 后端支持不同 Edge 版本。
-- [ ] 在更多机器上验证 Edge 151 的接管与启动行为。
-- [x] 分离浏览器、控制后端和搜索交互职责。
-- [ ] 基于稳定的应用接口开发桌面 GUI。
-- [ ] 增加明确的发行版本管理和 GitHub 自动构建。
+- [x] 通过 CDP 支持启动 Edge 和接管已有会话。
+- [x] 实现多来源话题获取、每日缓存和本地保险数据。
+- [ ] 基于稳定的应用接口开发桌面图形界面。
+- [ ] 通过 GitHub Actions 自动测试并构建发行包。
 
 ## 🧭 工作原理
 
 ```mermaid
 flowchart LR
-    Sources[在线数据源] --> Cache[每日缓存]
-    Cache --> Gather[TopicGather]
-    Fallback[保险话题] -. 全部来源失败 .-> Gather
-    Gather --> Runner[AutoSearcher]
-    Runner --> Browser[Browser 接口]
-    Browser --> Chromium[ChromiumBrowser]
-    Chromium --> Edge[EdgeBrowser]
-    Edge --> Session[CdpSession]
-    Session --> CDP[通用 CDP 层]
-    CDP --> Search[搜索与浏览]
+    Sources[在线数据源] --> Gather[收集并整理话题]
+    Cache[每日缓存] --> Gather
+    Fallback[保险话题] -. 在线来源不可用 .-> Gather
+    Gather --> Searcher[自动搜索器]
+    Searcher --> Edge[通过 CDP 控制 Edge]
+    Edge --> Search[搜索并浏览结果]
 ```
 
-核心依赖统一指向小型接口：
-
-- `AutoSearcher` 通过 `Browser` 接口协调完整运行流程。
-- `ChromiumBrowser` 实现通用的 CDP 发现、启动和会话流程。
-- `EdgeBrowser` 只提供 Edge 专属的可执行文件、进程、产品标识和调试规则。
-- `CdpSession` 通过通用 `Endpoint` 控制任意兼容浏览器。
-- `CdpInteraction` 通过 CDP 实现输入、点击和结果页浏览。
-- `TopicGather` 负责来源容错、聚合、随机排序、去重和保险话题切换。
-- `CachedSource` 在 `Source` 接口之上统一提供 HTTP 获取和可选的每日缓存。
-- `schemas` 只保存配置与搜索数据结构。
+程序首先读取当日缓存，或者从已启用的数据源获取最新话题；所有在线来源均不可用
+时，改用本地保险文件。话题完成去重和随机排序后，程序接管正在运行的 Edge，
+或者启动新的 Edge，再通过 CDP 逐条搜索并浏览结果页。
 
 ## 🚀 快速开始
 
@@ -169,7 +155,7 @@ sources:
 | `args` | 可选的 Edge 启动参数列表，支持有值参数和无值开关。 |
 | `page_timeout_seconds` | 页面跳转与元素等待超时。 |
 
-例如指定用户数据目录、Profile 和无值开关：
+例如指定用户数据目录、浏览器配置文件、调试端口和无值开关：
 
 ```yaml
 browser:
@@ -179,8 +165,7 @@ browser:
     - "--user-data-dir=%LOCALAPPDATA%/Microsoft/Edge/User Data"
     - "--profile-directory=Profile 1"
     - "--remote-debugging-port=9224"
-    - "--flag-switches-begin"
-    - "--flag-switches-end"
+    - "--start-maximized"
 ```
 
 参数中的环境变量会自动展开。无值开关直接写成一个字符串即可。
@@ -219,7 +204,7 @@ browser:
 每个来源的缓存仅在生成当天有效。缓存不存在、过期、为空或损坏时会重新请求。
 保险文件每行一个话题，空行和以 `#` 开头的行会被忽略。
 
-## 🌐 Edge 会话
+## 🌐 浏览器会话
 
 | 环境 | 行为 |
 | --- | --- |
@@ -227,9 +212,10 @@ browser:
 | 已启用 `edge://inspect/#remote-debugging` 开关 | 启动 Edge 时不传调试端口，由浏览器管理远程调试。 |
 | 没有该开关的旧版 Edge | 启动时自动传入内部兼容端口 `9222`。 |
 
-调试端口不是配置项。AutoSearcher 读取 Edge 用户数据根目录下 `Local State` 中
-与 `edge://inspect/#remote-debugging` 对应的浏览器级状态，自动选择启动方式。
-其他启动参数只在 `browser.args` 中明确配置时传入。
+程序读取 Edge 用户数据根目录下 `Local State` 中与
+`edge://inspect/#remote-debugging` 对应的浏览器级状态，自动选择启动方式。
+由浏览器管理远程调试时，程序会警告并忽略配置的端口；使用传统调试方式时，
+程序采用配置的端口，未配置则使用 `9222`。其他启动参数保持原样传入。
 
 Edge 151 需要先在 `edge://inspect` 中启用一次远程调试。之后 AutoSearcher
 读取浏览器级 WebSocket 地址，通过 CDP 创建独立标签页；接管运行结束时只关闭
@@ -280,7 +266,7 @@ AutoSearcher/
 
 ### 扩展数据源
 
-JSON HTTP 接口可以继承 `CachedSource`，实现 `name`、`url` 和 `parse()`。
+基于 HTTP 的 JSON 接口可以继承 `CachedSource`，实现 `name`、`url` 和 `parse()`。
 传入缓存目录即可启用每日缓存，传入 `None` 则绕过缓存。随后从 `sources`
 导出类、在命令行的数据源映射中注册、将名称加入
 `sources.enabled`，并为解析器补充不访问网络的单元测试。非 HTTP 来源可以
@@ -294,7 +280,7 @@ JSON HTTP 接口可以继承 `CachedSource`，实现 `name`、`url` 和 `parse()
 python -m unittest discover -s tests -v
 ```
 
-测试使用假的浏览器和内存数据源，不会打开 Edge，也不会访问在线热点接口。
+测试使用模拟浏览器和内存数据源，不会打开 Edge，也不会访问在线热点接口。
 
 双击 `build.cmd`，或在终端运行：
 

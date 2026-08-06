@@ -19,9 +19,8 @@ The project only covers **topic collection → browser search → result browsin
 It contains no account, sign-in, reward, or points logic.
 
 > [!IMPORTANT]
-> Edge 151 WebSocket/CDP support is experimental until it has been verified on
-> additional machines. Enable remote debugging in `edge://inspect` before using
-> a normal Edge 151 profile.
+> Enable remote debugging in `edge://inspect` before using a browser-managed
+> debugging session.
 
 ## ✨ Highlights
 
@@ -36,39 +35,27 @@ It contains no account, sign-in, reward, or points logic.
 
 ## 🗺️ Roadmap
 
-- [x] Add experimental Edge 151 WebSocket/CDP session attachment.
-- [x] Use one CDP backend for supported Edge versions.
-- [ ] Validate Edge 151 attachment and launch behavior on additional machines.
-- [x] Separate browser, backend, and interaction responsibilities.
+- [x] Support Edge startup and existing-session attachment through CDP.
+- [x] Add multi-source topic collection, daily caching, and local fallback data.
 - [ ] Build a desktop GUI on top of the stable application interfaces.
-- [ ] Add clearer release versioning and automated GitHub builds.
+- [ ] Add automated tests and release builds through GitHub Actions.
 
 ## 🧭 How It Works
 
 ```mermaid
 flowchart LR
-    Sources[Online Sources] --> Cache[Daily Cache]
-    Cache --> Gather[TopicGather]
-    Fallback[Fallback Topics] -. all sources fail .-> Gather
-    Gather --> Runner[AutoSearcher]
-    Runner --> Browser[Browser Interface]
-    Browser --> Chromium[ChromiumBrowser]
-    Chromium --> Edge[EdgeBrowser]
-    Edge --> Session[CdpSession]
-    Session --> CDP[Generic CDP Layer]
-    CDP --> Search[Search and Browse]
+    Sources[Online Sources] --> Gather[Collect and Deduplicate Topics]
+    Cache[Daily Cache] --> Gather
+    Fallback[Fallback Topics] -. online sources unavailable .-> Gather
+    Gather --> Searcher[AutoSearcher]
+    Searcher --> Edge[Edge via CDP]
+    Edge --> Search[Search and Browse Results]
 ```
 
-The main dependencies point inward toward small interfaces:
-
-- `AutoSearcher` coordinates the run through the `Browser` contract.
-- `ChromiumBrowser` implements shared CDP discovery, launch, and session flow.
-- `EdgeBrowser` supplies only Edge-specific executable, process, product, and debugging rules.
-- `CdpSession` controls any compatible browser through a generic `Endpoint`.
-- `CdpInteraction` implements typing, clicking, and result browsing through CDP.
-- `TopicGather` owns source fallback, aggregation, shuffling, and deduplication.
-- `CachedSource` adds HTTP retrieval and optional daily caching to the `Source` contract.
-- `schemas` contains configuration and search data structures only.
+AutoSearcher first loads today's cached topics or retrieves fresh data from the
+enabled sources. If every online source fails, it uses the local fallback file.
+After deduplication and shuffling, it attaches to a running Edge instance or
+starts one, then performs each search and browses the result page through CDP.
 
 ## 🚀 Quick Start
 
@@ -172,7 +159,8 @@ sources:
 | `args` | Optional Edge argument list for valued arguments and value-less flags. |
 | `page_timeout_seconds` | Page navigation and element wait timeout. |
 
-For example, to select a user-data directory, profile, and value-less flags:
+For example, to select a user-data directory, profile, debugging port, and a
+value-less flag:
 
 ```yaml
 browser:
@@ -182,8 +170,7 @@ browser:
     - "--user-data-dir=%LOCALAPPDATA%/Microsoft/Edge/User Data"
     - "--profile-directory=Profile 1"
     - "--remote-debugging-port=9224"
-    - "--flag-switches-begin"
-    - "--flag-switches-end"
+    - "--start-maximized"
 ```
 
 Environment variables in arguments are expanded automatically. A value-less
@@ -233,10 +220,11 @@ line; blank lines and lines beginning with `#` are ignored.
 | `edge://inspect/#remote-debugging` is enabled | Start Edge without a debugging-port argument and let the browser manage remote debugging. |
 | An older Edge without that switch | Start Edge with the internal compatibility port `9222`. |
 
-The debugging port is not configurable. AutoSearcher reads the browser-wide
-state corresponding to `edge://inspect/#remote-debugging` from `Local State`
-and selects the launch mode automatically. Other launch arguments are passed
-only when explicitly listed in `browser.args`.
+AutoSearcher reads the browser-wide state corresponding to
+`edge://inspect/#remote-debugging` from `Local State` and selects the launch
+mode automatically. Browser-managed debugging ignores a configured port with a
+warning; classic debugging uses the configured port or defaults to `9222`.
+Other launch arguments are passed unchanged.
 
 For Edge 151, enable remote debugging from `edge://inspect` once. AutoSearcher
 then reads the browser-level WebSocket path, opens a dedicated tab through CDP,
