@@ -76,7 +76,12 @@ class ChromiumBrowser(Browser):
         endpoint_dir = cls._configured_user_data_dir(browser_config)
         file_endpoint = read_active_endpoint(endpoint_dir)
         if file_endpoint is not None:
-            candidates.append(file_endpoint)
+            logger.info(
+                "从 DevToolsActivePort 发现可接管的 %s CDP 端点: %s",
+                cls._name(),
+                file_endpoint.address,
+            )
+            return file_endpoint
 
         for address in cls._listening_addresses():
             http_endpoint = read_http_endpoint(address)
@@ -124,6 +129,8 @@ class ChromiumBrowser(Browser):
             )
 
         command, expected_address = self._launch_command(executable)
+        endpoint_dir = self._configured_user_data_dir(self._browser_config)
+        previous_endpoint = read_active_endpoint(endpoint_dir, expected_address)
         logger.info("启动 %s，等待浏览器开放 CDP WebSocket", self.name)
         logger.debug("浏览器启动参数: %s", subprocess.list2cmdline(command))
 
@@ -141,15 +148,13 @@ class ChromiumBrowser(Browser):
             self._browser_config.page_timeout_seconds,
             10,
         )
-        endpoint_dir = self._configured_user_data_dir(self._browser_config)
         while time.monotonic() < deadline:
             endpoint = read_active_endpoint(endpoint_dir, expected_address)
+            if endpoint == previous_endpoint:
+                endpoint = None
             if endpoint is None and expected_address:
                 endpoint = read_http_endpoint(expected_address)
-            if endpoint is not None and self._is_supported_endpoint(
-                endpoint,
-                self._browser_config.page_timeout_seconds,
-            ):
+            if endpoint is not None:
                 return endpoint
             self._sleep(0.2)
         raise RuntimeError(

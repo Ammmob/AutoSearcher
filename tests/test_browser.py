@@ -32,7 +32,6 @@ class BrowserTests(unittest.TestCase):
 
 
 class EdgeBrowserTests(unittest.TestCase):
-    @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch.object(
         EdgeBrowser,
         "_default_user_data_dir",
@@ -49,7 +48,6 @@ class EdgeBrowserTests(unittest.TestCase):
         self,
         _read_endpoint,
         _default_user_data_dir,
-        is_supported_endpoint,
     ) -> None:
         config = BrowserConfig()
 
@@ -57,7 +55,6 @@ class EdgeBrowserTests(unittest.TestCase):
 
         self.assertEqual(endpoint.address, "127.0.0.1:9222")
         _read_endpoint.assert_called_once_with(Path("D:/DefaultEdgeData"))
-        is_supported_endpoint.assert_called_once()
 
     @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch(
@@ -91,7 +88,6 @@ class EdgeBrowserTests(unittest.TestCase):
 
         self.assertEqual(endpoint.address, "127.0.0.1:9224")
 
-    @patch.object(EdgeBrowser, "_is_supported_endpoint", return_value=True)
     @patch("auto_searcher.browsers.chromium_browser.subprocess.Popen")
     @patch.object(EdgeBrowser, "_process_is_running", return_value=False)
     @patch.object(
@@ -101,9 +97,17 @@ class EdgeBrowserTests(unittest.TestCase):
     )
     @patch(
         "auto_searcher.browsers.chromium_browser.read_active_endpoint",
-        return_value=Endpoint(
-            "127.0.0.1:9222",
-            "ws://127.0.0.1:9222/devtools/browser/test",
+        side_effect=(
+            None,
+            Endpoint(
+                "127.0.0.1:9222",
+                "ws://127.0.0.1:9222/devtools/browser/test-1",
+            ),
+            None,
+            Endpoint(
+                "127.0.0.1:9224",
+                "ws://127.0.0.1:9224/devtools/browser/test-2",
+            ),
         ),
     )
     @patch.object(EdgeBrowser, "_browser_manages_remote_debugging", return_value=False)
@@ -114,7 +118,6 @@ class EdgeBrowserTests(unittest.TestCase):
         _find_executable,
         _edge_running,
         popen,
-        _is_supported_endpoint,
     ) -> None:
         browser = EdgeBrowser(
             BrowserConfig(),
@@ -147,7 +150,7 @@ class EdgeBrowserTests(unittest.TestCase):
 
         explicit_endpoint = explicit_browser._launch()
 
-        self.assertEqual(explicit_endpoint.address, "127.0.0.1:9222")
+        self.assertEqual(explicit_endpoint.address, "127.0.0.1:9224")
         self.assertEqual(
             popen.call_args.args[0],
             [
@@ -157,7 +160,7 @@ class EdgeBrowserTests(unittest.TestCase):
                 "--remote-debugging-port=9224",
             ],
         )
-        self.assertEqual(_read_file_endpoint.call_count, 2)
+        self.assertEqual(_read_file_endpoint.call_count, 4)
 
     @patch.object(EdgeBrowser, "_browser_manages_remote_debugging", return_value=True)
     def test_modern_edge_launch_omits_debugging_port(self, _managed_debugging) -> None:
