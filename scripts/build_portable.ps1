@@ -7,11 +7,23 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $buildEnvironment = Join-Path $projectRoot ".build-venv"
 $buildPython = Join-Path $buildEnvironment "Scripts\python.exe"
 $distributionRoot = Join-Path $projectRoot "dist"
+$projectMetadata = Get-Content `
+    -LiteralPath (Join-Path $projectRoot "pyproject.toml") `
+    -Raw
+$versionMatch = [regex]::Match(
+    $projectMetadata,
+    '(?m)^version\s*=\s*"(?<version>[^"]+)"\s*$'
+)
+if (-not $versionMatch.Success) {
+    throw "Failed to read the project version from pyproject.toml."
+}
+$projectVersion = $versionMatch.Groups["version"].Value
 $stagingRoot = Join-Path `
     ([System.IO.Path]::GetTempPath()) `
     ("AutoSearcher-build-" + [guid]::NewGuid().ToString("N"))
 $portableRoot = Join-Path $stagingRoot "AutoSearcher"
-$archivePath = Join-Path $distributionRoot "AutoSearcher-portable-win-x64.zip"
+$archiveName = "AutoSearcher-portable-v${projectVersion}-win-x64.zip"
+$archivePath = Join-Path $distributionRoot $archiveName
 New-Item -ItemType Directory -Force -Path $distributionRoot | Out-Null
 
 if (-not (Test-Path -LiteralPath $buildPython)) {

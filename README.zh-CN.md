@@ -63,7 +63,7 @@ flowchart LR
 - Windows 10/11 x64
 - Microsoft Edge
 
-解压 `AutoSearcher-portable-win-x64.zip`，依次运行：
+解压 `AutoSearcher-portable-v0.1.0-win-x64.zip`，依次运行：
 
 ```powershell
 .\check.cmd
@@ -291,7 +291,7 @@ build.cmd
 输出文件：
 
 ```text
-dist\AutoSearcher-portable-win-x64.zip
+dist\AutoSearcher-portable-v0.1.0-win-x64.zip
 ```
 
 构建过程会创建隔离的 `.build-venv`、运行 PyInstaller、复制运行配置与文档、

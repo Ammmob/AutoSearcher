@@ -66,7 +66,7 @@ Requirements:
 - Windows 10 or 11 x64
 - Microsoft Edge
 
-Extract `AutoSearcher-portable-win-x64.zip`, then run:
+Extract `AutoSearcher-portable-v0.1.0-win-x64.zip`, then run:
 
 ```powershell
 .\check.cmd
@@ -303,7 +303,7 @@ build.cmd
 The output is written to:
 
 ```text
-dist\AutoSearcher-portable-win-x64.zip
+dist\AutoSearcher-portable-v0.1.0-win-x64.zip
 ```
 
 The build creates an isolated `.build-venv`, runs PyInstaller, copies runtime
